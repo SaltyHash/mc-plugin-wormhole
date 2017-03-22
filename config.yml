@@ -1,0 +1,18 @@
+# Wormhole config file
+
+# How much to charge for each action.  Set negative to pay instead.
+cost:
+  add:     0.0
+  back:    0.0
+  del:     0.0
+  jump:    0.0
+  rename:  0.0
+  replace: 0.0
+  set:     0.0
+  unset:   0.0
+  use:     0.0
+
+effects:
+  ring: false
+  smoke: true
+  sound: true

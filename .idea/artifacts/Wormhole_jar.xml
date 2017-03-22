@@ -1,0 +1,12 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="Wormhole:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Wormhole_jar</output-path>
+    <root id="archive" name="Wormhole.jar">
+      <element id="module-output" name="Wormhole" />
+      <element id="file-copy" path="$PROJECT_DIR$/config.yml" />
+      <element id="file-copy" path="$PROJECT_DIR$/LICENSE.txt" />
+      <element id="file-copy" path="$PROJECT_DIR$/plugin.yml" />
+      <element id="dir-copy" path="$PROJECT_DIR$/src" />
+    </root>
+  </artifact>
+</component>

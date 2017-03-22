@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS jumps (
+  player_name TEXT,
+  jump_name TEXT,
+  world_name TEXT,
+  x REAL, y REAL, z REAL, yaw REAL,
+  PRIMARY KEY (player_name, jump_name))
+
+CREATE TABLE IF NOT EXISTS signs (
+  world_name TEXT,
+  x INTEGER, y INTEGER, z INTEGER,
+  player_name TEXT,
+  jump_name TEXT,
+  PRIMARY KEY (world_name, x, y, z),
+  FOREIGN KEY (player_name, jump_name)
+    REFERENCES jumps (player_name, jump_name)
+    ON DELETE CASCADE  ON UPDATE CASCADE)
