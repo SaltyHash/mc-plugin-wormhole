@@ -32,20 +32,23 @@ public class Wormhole extends JavaPlugin {
         // Save default config (doesn't overwrite)
         this.saveDefaultConfig();
         
-        // Check if we need to rename the old "Wormhole.sqlite.db" file
-        // dataPath = "/path/to/plugins/Wormhole/"
+        /* Check if we need to rename the DB file from "Wormhole.sqlite.db"
+        /* to just "Wormhole.sqlite". */
+        // dataPath = "/path/to/plugins/Wormhole/".
         String dataPath  = this.getDataFolder().getAbsolutePath()+File.separator;
-        String oldDBPath = dataPath+"Wormhole.sqlite.db";
-        String newDBPath = dataPath+"Wormhole.sqlite";
+        File oldDBFile = new File(dataPath+"Wormhole.sqlite.db");
+        File newDBFile = new File(dataPath+"Wormhole.sqlite");
         // Old DB file exists and the new one does not?
-        if (new File(oldDBPath).exists() && !(new File(newDBPath).exists())) {
+        if (oldDBFile.exists() && !newDBFile.exists()) {
             // Rename the old DB file to the new filename
-            if (new File(oldDBPath).renameTo(new File(newDBPath))) {
-                this.getLogger().info("Renamed Sqlite database file from "
+            if (oldDBFile.renameTo(newDBFile)) {
+                // Successfully renamed DB file
+                this.getLogger().info("Renamed SQLite database file from "
                         +"'Wormhole.sqlite.db' to 'Wormhole.sqlite'.");
             } else {
-                // Failed to rename DB file; can't continue.
-                this.getLogger().severe("Failed to rename Sqlite database file!");
+                // Failed to rename DB file; abort.
+                this.getLogger().severe(
+                        "Failed to rename SQLite database file!");
                 this.getServer().getPluginManager().disablePlugin(this);
                 return;
             }
@@ -54,12 +57,14 @@ public class Wormhole extends JavaPlugin {
         // Initiate database
         try {
             Class.forName("org.sqlite.JDBC");
-            this.db = DriverManager.getConnection("jdbc:sqlite:"+newDBPath);
+            this.db = DriverManager.getConnection(
+                    "jdbc:sqlite:"+newDBFile.getAbsolutePath());
             this.db.createStatement().execute("PRAGMA foreign_keys=ON");
         }
         catch (ClassNotFoundException | SQLException e) {
-            // Failed to connect to database; can't run without it
-            this.getLogger().severe("Could not connect to database; "+e.getLocalizedMessage());
+            // Failed to connect to database; abort.
+            this.getLogger().severe(
+                    "Could not connect to database; "+e.getLocalizedMessage());
             this.getServer().getPluginManager().disablePlugin(this);
             return;
         }
