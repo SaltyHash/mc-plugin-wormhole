@@ -1,5 +1,5 @@
 name: Wormhole
-version: 1.3.4
+version: 1.4.0
 author: Austin Bowen <austin.bowen.314@gmail.com>
 main: info.saltyhash.wormhole.Wormhole
 softdepend: [Vault]

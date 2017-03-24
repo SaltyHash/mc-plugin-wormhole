@@ -33,7 +33,7 @@ public class Wormhole extends JavaPlugin {
         this.saveDefaultConfig();
         
         /* Check if we need to rename the DB file from "Wormhole.sqlite.db"
-        /* to just "Wormhole.sqlite". */
+        /* of v1.3.4, to just "Wormhole.sqlite". */
         // dataPath = "/path/to/plugins/Wormhole/".
         String dataPath  = this.getDataFolder().getAbsolutePath()+File.separator;
         File oldDBFile = new File(dataPath+"Wormhole.sqlite.db");
@@ -54,7 +54,7 @@ public class Wormhole extends JavaPlugin {
             }
         }
         
-        // Initiate database
+        // Connect to database
         try {
             Class.forName("org.sqlite.JDBC");
             this.db = DriverManager.getConnection(
