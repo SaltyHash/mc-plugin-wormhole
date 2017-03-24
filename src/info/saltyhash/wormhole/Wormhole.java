@@ -32,11 +32,29 @@ public class Wormhole extends JavaPlugin {
         // Save default config (doesn't overwrite)
         this.saveDefaultConfig();
         
+        // Check if we need to rename the old "Wormhole.sqlite.db" file
+        // dataPath = "/path/to/plugins/Wormhole/"
+        String dataPath  = this.getDataFolder().getAbsolutePath()+File.separator;
+        String oldDBPath = dataPath+"Wormhole.sqlite.db";
+        String newDBPath = dataPath+"Wormhole.sqlite";
+        // Old DB file exists and the new one does not?
+        if (new File(oldDBPath).exists() && !(new File(newDBPath).exists())) {
+            // Rename the old DB file to the new filename
+            if (new File(oldDBPath).renameTo(new File(newDBPath))) {
+                this.getLogger().info("Renamed Sqlite database file from "
+                        +"'Wormhole.sqlite.db' to 'Wormhole.sqlite'.");
+            } else {
+                // Failed to rename DB file; can't continue.
+                this.getLogger().severe("Failed to rename Sqlite database file!");
+                this.getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
+        }
+        
         // Initiate database
         try {
             Class.forName("org.sqlite.JDBC");
-            String path = getDataFolder().getAbsolutePath()+File.separator+"Wormhole.sqlite.db";
-            this.db = DriverManager.getConnection("jdbc:sqlite:"+path);
+            this.db = DriverManager.getConnection("jdbc:sqlite:"+newDBPath);
             this.db.createStatement().execute("PRAGMA foreign_keys=ON");
         }
         catch (ClassNotFoundException | SQLException e) {
