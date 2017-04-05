@@ -87,7 +87,7 @@ public final class DBManager {
             }
             return results.getInt("version");
         } catch (SQLException e) {
-            e.printStackTrace();
+            // File or table DNE
             return -1;
         }
     }
@@ -139,12 +139,12 @@ public final class DBManager {
             logSevere(e.toString());
             return false;
         }
-    
+        
         // Create table 'players'
         try (Statement s = getConnection().createStatement()) {
             s.execute("CREATE TABLE players (\n" +
-                    "  `uuid` CHAR(36),\n" +
-                    "  `name` VARCHAR(16),\n" +
+                    "  `uuid`     CHAR(36),\n" +
+                    "  `username` VARCHAR(16),\n" +
                     "  PRIMARY KEY (`uuid`));"
             );
         } catch (SQLException e) {
@@ -152,17 +152,17 @@ public final class DBManager {
             logSevere(e.toString());
             return false;
         }
-    
+        
         // Create table 'jumps'
         try (Statement s = getConnection().createStatement()) {
             s.execute("CREATE TABLE jumps (\n" +
                     "  `player_uuid` CHAR(36),\n" +
                     "  `name`        TEXT,\n" +
-                    "  `world_name`  TEXT,\n" +
+                    "  `world_uuid`  CHAR(36),\n" +
                     "  `x` REAL, `y` REAL, `z` REAL, `yaw` REAL,\n" +
-                    "  PRIMARY KEY (`player_uuid`, `jump_name`),\n" +
+                    "  PRIMARY KEY (`player_uuid`, `name`),\n" +
                     "  FOREIGN KEY (`player_uuid`)\n" +
-                    "    REFERENCES players(`name`)\n" +
+                    "    REFERENCES players(`uuid`)\n" +
                     "    ON DELETE CASCADE  ON UPDATE CASCADE);"
             );
         } catch (SQLException e) {
@@ -174,11 +174,11 @@ public final class DBManager {
         // Create table 'signs'
         try (Statement s = getConnection().createStatement()) {
             s.execute("CREATE TABLE signs (\n" +
-                    "  `world_name` TEXT,\n" +
+                    "  `world_uuid` CHAR(36),\n" +
                     "  `x` INTEGER, `y` INTEGER, `z` INTEGER,\n" +
                     "  `player_uuid` CHAR(36),\n" +
                     "  `jump_name` TEXT,\n" +
-                    "  PRIMARY KEY (`world_name`, `x`, `y`, `z`),\n" +
+                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`),\n" +
                     "  FOREIGN KEY (`player_uuid`, `jump_name`)\n" +
                     "    REFERENCES jumps (`player_uuid`, `name`)\n" +
                     "    ON DELETE CASCADE  ON UPDATE CASCADE);"

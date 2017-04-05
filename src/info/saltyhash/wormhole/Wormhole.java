@@ -3,10 +3,12 @@ package info.saltyhash.wormhole;
 import java.io.File;
 
 import info.saltyhash.wormhole.persistence.DBManager;
+import info.saltyhash.wormhole.persistence.PlayerRecord;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /** Wormhole plugin. */
@@ -34,9 +36,21 @@ public class Wormhole extends JavaPlugin {
         // Register event handler and command handler
         this.getServer().getPluginManager().registerEvents(
             new WormholeEventHandler(this, econMgr), this);
+        /*
         WormholeCommandHandler handler =
             new WormholeCommandHandler(this, econMgr);
         this.getCommand("wormhole").setExecutor(handler);
+        */
+        
+        // Save logged in players to the database
+        for (Player player : this.getServer().getOnlinePlayers()) {
+            PlayerRecord pr = new PlayerRecord(player);
+            if (!pr.save()) {
+                this.getLogger().warning("Failed to save player '" +
+                        player.getName() + "' to the database."
+                );
+            }
+        }
         
         this.getLogger().info("Enabled");
     }
