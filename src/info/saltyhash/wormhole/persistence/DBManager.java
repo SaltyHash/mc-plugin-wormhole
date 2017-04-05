@@ -143,9 +143,8 @@ public final class DBManager {
         // Create table 'players'
         try (Statement s = getConnection().createStatement()) {
             s.execute("CREATE TABLE players (\n" +
-                    "  `uuid`     CHAR(36),\n" +
-                    "  `username` VARCHAR(16),\n" +
-                    "  PRIMARY KEY (`uuid`));"
+                    "  `uuid`     CHAR(36) PRIMARY KEY,\n" +
+                    "  `username` VARCHAR(16);"
             );
         } catch (SQLException e) {
             logSevere("Failed to create table 'players':");
@@ -156,14 +155,13 @@ public final class DBManager {
         // Create table 'jumps'
         try (Statement s = getConnection().createStatement()) {
             s.execute("CREATE TABLE jumps (\n" +
-                    "  `player_uuid` CHAR(36),\n" +
+                    "  `id`          INTEGER PRIMARY KEY,\n" +
+                    "  `player_uuid` CHAR(36) REFERENCES players(`uuid`)\n" +
+                    "                ON DELETE CASCADE ON UPDATE CASCADE,\n" +
                     "  `name`        TEXT,\n" +
                     "  `world_uuid`  CHAR(36),\n" +
                     "  `x` REAL, `y` REAL, `z` REAL, `yaw` REAL,\n" +
-                    "  PRIMARY KEY (`player_uuid`, `name`),\n" +
-                    "  FOREIGN KEY (`player_uuid`)\n" +
-                    "    REFERENCES players(`uuid`)\n" +
-                    "    ON DELETE CASCADE  ON UPDATE CASCADE);"
+                    "  UNIQUE (`player_uuid`, `name`);"
             );
         } catch (SQLException e) {
             logSevere("Failed to create table 'jumps':");
@@ -176,12 +174,9 @@ public final class DBManager {
             s.execute("CREATE TABLE signs (\n" +
                     "  `world_uuid` CHAR(36),\n" +
                     "  `x` INTEGER, `y` INTEGER, `z` INTEGER,\n" +
-                    "  `player_uuid` CHAR(36),\n" +
-                    "  `jump_name` TEXT,\n" +
-                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`),\n" +
-                    "  FOREIGN KEY (`player_uuid`, `jump_name`)\n" +
-                    "    REFERENCES jumps (`player_uuid`, `name`)\n" +
-                    "    ON DELETE CASCADE  ON UPDATE CASCADE);"
+                    "  `jump_id` INTEGER REFERENCES jumps(`id`)\n" +
+                    "            ON DELETE CASCADE ON UPDATE CASCADE,\n" +
+                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`);"
             );
         } catch (SQLException e) {
             logSevere("Failed to create table 'signs':");
