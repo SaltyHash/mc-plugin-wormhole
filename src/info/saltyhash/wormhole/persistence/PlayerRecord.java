@@ -1,6 +1,5 @@
 package info.saltyhash.wormhole.persistence;
 
-import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
 import java.sql.Connection;
@@ -25,11 +24,14 @@ public class PlayerRecord {
     /** Gets the player record from the database.
      *
      * @param uuid UUID of the player.
-     * @return Player record or null if DNE.
+     * @return Player record or null if DNE or error.
      */
     public static PlayerRecord load(UUID uuid) {
+        Connection conn = DBManager.getConnection();
+        if (conn == null) return null;
+        
         // Try to get the player data from the database
-        try (PreparedStatement ps = DBManager.getConnection().prepareStatement(
+        try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT `username` FROM players WHERE `uuid` = ? LIMIT 1;"
         )) {
             ps.setString(1, uuid.toString());
@@ -51,11 +53,14 @@ public class PlayerRecord {
     /** Gets the player record from the database.
      *
      * @param username Username of the player.
-     * @return Player record or null if DNE.
+     * @return Player record or null if DNE or error.
      */
     public static PlayerRecord load(String username) {
+        Connection conn = DBManager.getConnection();
+        if (conn == null) return null;
+        
         // Try to get the player data from the database
-        try (PreparedStatement ps = DBManager.getConnection().prepareStatement(
+        try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT `uuid` FROM players WHERE `username` = ? LIMIT 1;"
         )) {
             ps.setString(1, username);
@@ -74,8 +79,35 @@ public class PlayerRecord {
         return null;
     }
     
+    /** Deletes the player record from the database.
+     * WARNING: This will delete all jumps and signs associated with the player!
+     *
+     * @return true on success (even if record DNE); false on SQL error.
+     */
+    public boolean delete() {
+        Connection conn = DBManager.getConnection();
+        if (conn == null) return false;
+        
+        // Try to delete the player record from the database
+        try (PreparedStatement delete = conn.prepareStatement(
+                "DELETE FROM players WHERE `uuid` = ?;"
+        )) {
+            delete.setString(1, this.uuid.toString());
+            delete.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+    
+    /** Saves the player record to the database.
+     *
+     * @return true on success; false on error.
+     */
     public boolean save() {
         Connection conn = DBManager.getConnection();
+        if (conn == null) return false;
         
         // Try to execute update
         try (PreparedStatement update = conn.prepareStatement(
