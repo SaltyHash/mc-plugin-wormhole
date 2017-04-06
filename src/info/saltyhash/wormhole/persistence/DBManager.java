@@ -8,73 +8,106 @@ import java.util.logging.Logger;
  * Manages the database.
  *
  * Usage:
- * DBManager.logger = ...;
- * DBManager.dbFile = new File("/path/to/database.sqlite");
+ * DBManager.logger = ...;  // Optional
+ * DBManager.setDbFile(new File("/path/to/database.sqlite"));
  * Connection conn  = DBManager.getConnection();
  */
 public final class DBManager {
     private DBManager() {}
     
-    private static Connection connection = null;
-    /** Returns a connection to the database, reusing it if possible.
-     * Setting the dbFile will close any existing connection.
-     *
+    private static Connection connection;
+    /**
+     * Returns a connection to the database, reusing previous connection if possible.
+     * The connection is configured with foreign keys ON.  Logs errors.
      * @return Database connection, or null on error.
      */
-    public static Connection getConnection() {
-        if (dbFile == null) return null;
+    static Connection getConnection() {
+        if (dbFile == null) throw new NullPointerException("DBManager.dbFile must not be null");
         
+        // Create connection if necessary
         try {
             if (connection == null || connection.isClosed()) {
                 Class.forName("org.sqlite.JDBC");
                 connection = DriverManager.getConnection(
                         "jdbc:sqlite:"+dbFile.getAbsolutePath());
-                connection.createStatement().execute("PRAGMA foreign_keys=ON");
             }
         } catch (ClassNotFoundException | SQLException e) {
-            connection = null;
+            logSevere("Failed to connect to database");
+            logSevere(e.toString());
+            return (connection = null);
         }
         
-        return connection;
-    }
-    /** Closes the database connection if it exists and is open. */
-    public static void closeConnection() {
-        try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
-                connection = null;
-            }
+        // Turn on foreign keys
+        try (Statement s = connection.createStatement()) {
+            s.execute("PRAGMA foreign_keys=ON;");
         } catch (SQLException e) {
-            logWarning("Failed to close database connection.");
+            logSevere("Failed to enable database foreign keys");
+            logSevere(e.toString());
+            DBManager.closeConnection();
+            return (connection = null);
+        }
+        
+        /*
+        // Disable autocommit
+        try {
+            connection.setAutoCommit(false);
+        } catch (SQLException e) {
+            logWarning("Failed to disable database autocommit");
             logWarning(e.toString());
         }
+        */
+    
+        return connection;
+    }
+    
+    /**
+     * If a database connection exists, then its changes are committed
+     * and the connection is closed.  Logs errors.
+     * @return true on success; false on error.
+     */
+    public static boolean closeConnection() {
+        boolean success = true;
+        if (connection != null) {
+            try {
+                if (!connection.isClosed()) {
+                    try {
+                        connection.commit();
+                    } catch (SQLException e) {
+                        logSevere("Failed to commit changes to database before closing");
+                        success = false;
+                    }
+                    connection.close();
+                }
+            } catch (SQLException e) {
+                logWarning("Failed to close database connection");
+                success = false;
+            }
+            connection = null;
+        }
+        return success;
     }
     
     /** The database file.  Setting this will close any existing connection. */
-    public static File dbFile = null;
+    private static File dbFile;
+    public static File getDbFile() { return dbFile; }
     public static void setDbFile(File newDbFile) {
-        System.out.print("Database file set.");
         dbFile = newDbFile;
-        try {
-            if (connection != null && !connection.isClosed())
-                connection.close();
-        } catch (SQLException e) {
-        }
+        closeConnection();
     }
     
-    public  static Logger logger = null;
-    private static void logInfo(String msg) {
+    public  static Logger logger;
+    static void logInfo(String msg) {
         if (logger != null) logger.info(msg);
     }
-    private static void logWarning(String msg) {
+    static void logWarning(String msg) {
         if (logger != null) logger.warning(msg);
     }
-    private static void logSevere(String msg) {
+    static void logSevere(String msg) {
         if (logger != null) logger.severe(msg);
     }
     
-    /** @return The current database version, or -1 on error. */
-    public static int getDatabaseVersion() {
+    /** Returns the current database version, or -1 on error. */
+    private static int getDatabaseVersion() {
         try (Statement s = getConnection().createStatement()) {
             // Try to get the 1st row
             ResultSet results = s.executeQuery(
@@ -92,9 +125,9 @@ public final class DBManager {
         }
     }
     
-    /** Sets the database version.  If an error occurs, it is logged.
-     *
-     * @param  version
+    /**
+     * Sets the database version.  Logs errors.
+     * @param  version The version number to set the database to.
      * @return true on success; false on error.
      */
     private static boolean setDatabaseVersion(int version) {
@@ -104,7 +137,7 @@ public final class DBManager {
                     "(`version`) VALUES ("+version+");"
             );
         } catch (SQLException e) {
-            logSevere("Failed to set database version:");
+            logSevere("Failed to set database version");
             logSevere(e.toString());
             return false;
         }
@@ -112,7 +145,8 @@ public final class DBManager {
         return true;    // Success
     }
     
-    /** Migrates the database to the latest version.
+    /**
+     * Migrates the database to the latest version.
      * @return true on success; false on failure.
      */
     public static boolean migrate() {
@@ -120,73 +154,83 @@ public final class DBManager {
             case -1: if (!migration0()) return false;
             default: break;
         }
-        
         return true;    // Success
     }
     
-    /* Migrations */
+    /* <Migrations> */
     
+    /**
+     * Migrates to database version from previous.  Logs errors.
+     * @return true on success; false on error.
+     */
     private static boolean migration0() {
         logInfo("Creating database v0...");
         
+        Connection conn = getConnection();
+        
         // Create table 'schema_version'
-        try (Statement s = getConnection().createStatement()) {
-            s.execute("CREATE TABLE schema_version (\n" +
+        try (Statement s = conn.createStatement()) {
+            s.execute("CREATE TABLE IF NOT EXISTS schema_version (\n" +
                     "  `version` INTEGER);"
             );
         } catch (SQLException e) {
-            logSevere("Failed to create table schema_version:");
-            logSevere(e.toString());
+            logSevere("Failed to create table schema_version");
+            e.printStackTrace();
             return false;
         }
         
         // Create table 'players'
-        try (Statement s = getConnection().createStatement()) {
-            s.execute("CREATE TABLE players (\n" +
+        try (Statement s = conn.createStatement()) {
+            s.execute("CREATE TABLE IF NOT EXISTS players (\n" +
                     "  `uuid`     CHAR(36) PRIMARY KEY,\n" +
-                    "  `username` VARCHAR(16);"
+                    "  `username` VARCHAR(16));"
             );
         } catch (SQLException e) {
-            logSevere("Failed to create table 'players':");
-            logSevere(e.toString());
+            logSevere("Failed to create table 'players'");
+            e.printStackTrace();
             return false;
         }
         
         // Create table 'jumps'
-        try (Statement s = getConnection().createStatement()) {
-            s.execute("CREATE TABLE jumps (\n" +
+        try (Statement s = conn.createStatement()) {
+            s.execute("CREATE TABLE IF NOT EXISTS jumps (\n" +
                     "  `id`          INTEGER PRIMARY KEY,\n" +
                     "  `player_uuid` CHAR(36) REFERENCES players(`uuid`)\n" +
                     "                ON DELETE CASCADE ON UPDATE CASCADE,\n" +
                     "  `name`        TEXT,\n" +
                     "  `world_uuid`  CHAR(36),\n" +
                     "  `x` REAL, `y` REAL, `z` REAL, `yaw` REAL,\n" +
-                    "  UNIQUE (`player_uuid`, `name`);"
+                    "  UNIQUE (`player_uuid`, `name`));"
             );
         } catch (SQLException e) {
-            logSevere("Failed to create table 'jumps':");
-            logSevere(e.toString());
+            logSevere("Failed to create table 'jumps'");
+            e.printStackTrace();
             return false;
         }
-    
+        
         // Create table 'signs'
-        try (Statement s = getConnection().createStatement()) {
-            s.execute("CREATE TABLE signs (\n" +
+        try (Statement s = conn.createStatement()) {
+            s.execute("CREATE TABLE IF NOT EXISTS signs (\n" +
                     "  `world_uuid` CHAR(36),\n" +
                     "  `x` INTEGER, `y` INTEGER, `z` INTEGER,\n" +
                     "  `jump_id` INTEGER REFERENCES jumps(`id`)\n" +
                     "            ON DELETE CASCADE ON UPDATE CASCADE,\n" +
-                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`);"
+                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`));"
             );
         } catch (SQLException e) {
-            logSevere("Failed to create table 'signs':");
-            logSevere(e.toString());
+            logSevere("Failed to create table 'signs'");
+            e.printStackTrace();
             return false;
         }
         
-        if (!setDatabaseVersion(0)) return false;
+        if (!setDatabaseVersion(0)) {
+            logSevere("Failed to set database version to 0");
+            return false;
+        }
         
         logInfo("Done.");
         return true;
     }
+    
+    /* </Migrations> */
 }

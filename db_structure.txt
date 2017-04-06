@@ -20,25 +20,25 @@ CREATE TABLE IF NOT EXISTS signs (
 
 - - - - - - - - - - - - - - - - -  Version 0   - - - - - - - - - - - - - - - - -
 
-CREATE TABLE schema_version (
+CREATE TABLE IF NOT EXISTS schema_version (
   `version` INTEGER);
 
-CREATE TABLE players (
+CREATE TABLE IF NOT EXISTS players (
   `uuid`     CHAR(36) PRIMARY KEY,
-  `username` VARCHAR(16);
+  `username` VARCHAR(16));
 
-CREATE TABLE jumps (
+CREATE TABLE IF NOT EXISTS jumps (
   `id`          INTEGER PRIMARY KEY,
   `player_uuid` CHAR(36) REFERENCES players(`uuid`)
                 ON DELETE CASCADE ON UPDATE CASCADE,
   `name`        TEXT,
   `world_uuid`  CHAR(36),
   `x` REAL, `y` REAL, `z` REAL, `yaw` REAL,
-  UNIQUE (`player_uuid`, `name`);
+  UNIQUE (`player_uuid`, `name`));
 
-CREATE TABLE signs (
+CREATE TABLE IF NOT EXISTS signs (
   `world_uuid` CHAR(36),
   `x` INTEGER, `y` INTEGER, `z` INTEGER,
   `jump_id` INTEGER REFERENCES jumps(`id`)
             ON DELETE CASCADE ON UPDATE CASCADE,
-  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`);
+  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`));
