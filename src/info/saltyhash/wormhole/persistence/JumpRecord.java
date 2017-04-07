@@ -9,7 +9,7 @@ import java.util.UUID;
 /** Represents a row in the database table 'jumps'. */
 public class JumpRecord {
     public Integer id;          // Primary key
-    public UUID    playerUuid;  // Foreign key to players.uuid
+    public UUID    playerUuid;  // Foreign key to players.uuid. Unique with name.
     public String  name;
     public UUID    worldUuid;
     public double  x, y, z;
@@ -139,7 +139,7 @@ public class JumpRecord {
         if (id != null) {
             // Create update statement
             final String updateSql = "UPDATE jumps SET "+
-                    "`player_uuid`=?,`name`=?,`world_uuid`=?,`x`=?,`y`=?,`z`=?,`yaw`=?) "+
+                    "`player_uuid`=?,`name`=?,`world_uuid`=?,`x`=?,`y`=?,`z`=?,`yaw`=? "+
                     "WHERE `id`=?;";
             try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
                 // Set parameters
@@ -182,7 +182,7 @@ public class JumpRecord {
                 // Set id to the generated key
                 ResultSet rs = ps.getGeneratedKeys();
                 if (rs.next()) {
-                    id = rs.getInt("id");
+                    id = rs.getInt(1);
                     DBManager.logInfo("jump id = "+id);
                     return true;
                 } else {
