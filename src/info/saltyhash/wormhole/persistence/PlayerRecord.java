@@ -1,5 +1,6 @@
 package info.saltyhash.wormhole.persistence;
 
+import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
 import java.sql.*;
@@ -45,6 +46,11 @@ public class PlayerRecord {
             return false;
         }
         return true;
+    }
+    
+    /** Returns the player on the server corresponding to this player record, if they are online. */
+    public Player getPlayer(Server server) {
+        return server.getPlayer(uuid);
     }
     
     /**
