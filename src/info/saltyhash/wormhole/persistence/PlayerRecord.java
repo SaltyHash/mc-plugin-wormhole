@@ -1,5 +1,6 @@
 package info.saltyhash.wormhole.persistence;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
@@ -48,10 +49,8 @@ public class PlayerRecord {
         return true;
     }
     
-    /** Returns the player on the server corresponding to this player record, if they are online. */
-    public Player getPlayer(Server server) {
-        return server.getPlayer(uuid);
-    }
+    /** Returns the player corresponding to this record, or null if they are not logged in. */
+    public Player getPlayer() { return Bukkit.getServer().getPlayer(uuid); }
     
     /**
      * Gets the player record with given username from the database.  Logs errors.

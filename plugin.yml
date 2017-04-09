@@ -1,21 +1,21 @@
 name: Wormhole
 version: 1.4.0
 author: Austin Bowen <austin.bowen.314@gmail.com>
-main: info.saltyhash.wormhole.Wormhole
+main: info.saltyhash.plugin.Wormhole
 softdepend: [Vault]
 commands:
-  wormhole:
+  plugin:
     description: Display all Wormhole commands
     aliases: [worm]
     usage: /<command> [add | back | cost | del | jump | list | rename | replace | set | unset]
-  wormhole reload:
+  plugin reload:
     description: Reload config
     usage: /<command>
-  wormhole version:
+  plugin version:
     description: Display the Wormhole version
     usage: /<command>
   worm add:
-    description: Create a new Jump
+    description: Create a new jump
     usage: /<command> [player | pub] <jump name>
   worm back:
     description: Jump back to previous location
@@ -24,10 +24,10 @@ commands:
     description: Displays the cost of all actions
     usage: /<command>
   worm del:
-    description: Delete a Jump
+    description: Delete a jump
     usage: /<command> [player | pub] <jump name>
   worm jump:
-    description: Jump directly to a Jump
+    description: Jump directly to a jump
     usage: /<command> [player | pub] <jump name>
   worm list:
     description: List Jumps
@@ -45,127 +45,127 @@ commands:
     description: Unset a sign pointing to a Jump
     usage: /<command>
 permissions:
-  wormhole.*:
+  plugin.*:
     description: Gives all permissions for Wormhole
     default: op
     children:
-      wormhole.add.*:
+      plugin.add.*:
         description: Create / replace all types of Jump
         children:
-          wormhole.add.other:
+          plugin.add.other:
             description: Create private Jumps for other players
             default: op
-          wormhole.add.private:
+          plugin.add.private:
             description: Create private Jumps
             default: true
-          wormhole.add.public:
+          plugin.add.public:
             description: Create public Jumps
             default: op
-      wormhole.back:
+      plugin.back:
         description: Jump back to previous location
         default: true
-      wormhole.del.*:
+      plugin.del.*:
         description: Delete all types of Jump
         children:
-          wormhole.del.other:
+          plugin.del.other:
             description: Delete other users' Jumps
             default: op
-          wormhole.del.private:
+          plugin.del.private:
             description: Delete private Jumps
             default: true
-          wormhole.del.public:
+          plugin.del.public:
             description: Delete public Jumps
             default: op
-      wormhole.free:
+      plugin.free:
         description: Exept from being charged to use Wormhole
         default: op
-      wormhole.jump.*:
+      plugin.jump.*:
         description: Jump directly to any type of Jump
         children:
-          wormhole.jump.other:
+          plugin.jump.other:
             description: Jump directly to another user's Jump
             default: op
-          wormhole.jump.private:
+          plugin.jump.private:
             description: Jump directly to private Jump
             default: true
-          wormhole.jump.public:
+          plugin.jump.public:
             description: Jump directly to public Jump
             default: true
-      wormhole.list.*:
+      plugin.list.*:
         description: List all types of Jump
         children:
-          wormhole.list.other:
+          plugin.list.other:
             description: List others' Jumps
             default: op
-          wormhole.list.private:
+          plugin.list.private:
             description: List private Jumps
             default: true
-          wormhole.list.public:
+          plugin.list.public:
             description: List public Jumps
             default: true
-      wormhole.reload:
+      plugin.reload:
         description: Reload config
         default: op
-      wormhole.rename:
+      plugin.rename:
         description: Rename all types of Jump
         children:
-          wormhole.rename.other:
+          plugin.rename.other:
             description: Rename other players' Jumps
             default: op
-          wormhole.rename.private:
+          plugin.rename.private:
             description: Rename private Jumps
             default: true
-          wormhole.rename.public:
+          plugin.rename.public:
             description: Rename public Jumps
             default: op
-      wormhole.replace.*:
+      plugin.replace.*:
         description: Replace all types of Jump
         children:
-          wormhole.replace.other:
+          plugin.replace.other:
             description: Replace other players' Jumps
             default: op
-          wormhole.replace.private:
+          plugin.replace.private:
             description: Replace private Jumps
             default: true
-          wormhole.replace.public:
+          plugin.replace.public:
             description: Replace public Jumps
             default: op
-      wormhole.set.*:
+      plugin.set.*:
         description: Set sign to point to all types of Jump
         children:
-          wormhole.set.other:
+          plugin.set.other:
             description: Set sign to point to another user's Jump
             default: op
-          wormhole.set.private:
+          plugin.set.private:
             description: Set sign to point to a private Jump
             default: true
-          wormhole.set.public:
+          plugin.set.public:
             description: Set sign to point to a public Jump
             default: op
-      wormhole.unset.*:
+      plugin.unset.*:
         description: Unset sign pointing to any type of Jump
         children:
-          wormhole.unset.other:
+          plugin.unset.other:
             description: Unset sign pointing to another user's Jump
             default: op
-          wormhole.unset.private:
+          plugin.unset.private:
             description: Unset sign pointing to private Jump
             default: true
-          wormhole.unset.public:
+          plugin.unset.public:
             description: Unset sign pointing to public Jump
             default: op
-      wormhole.use.*:
+      plugin.use.*:
         description: Use sign pointing to any type of Jump
         children:
-          wormhole.use.other:
+          plugin.use.other:
             description: Use another user's Jump sign
             default: op
-          wormhole.use.private:
+          plugin.use.private:
             description: Use private Jump sign
             default: true
-          wormhole.use.public:
+          plugin.use.public:
             description: Use public Jump sign
             default: true
-      wormhole.version:
+      plugin.version:
         description: Display the Wormhole version
         default: op

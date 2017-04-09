@@ -1,12 +1,18 @@
 package info.saltyhash.wormhole.persistence;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerTeleportEvent;
 
 import java.sql.*;
 import java.util.UUID;
 
-/** Represents a row in the database table 'jumps'. */
+/**
+ * Represents a row in the database table 'jumps'.
+ * Setting playerUuid to null makes the jump public.
+ */
 public class JumpRecord {
     public Integer id;          // Primary key
     public UUID    playerUuid;  // Foreign key to players.uuid. Unique with name.
@@ -14,6 +20,10 @@ public class JumpRecord {
     public UUID    worldUuid;
     public double  x, y, z;
     public float   yaw;
+    
+    private static final UUID SqlPublicUuid = new UUID(0, 0);
+    
+    public JumpRecord() {}
     
     public JumpRecord(UUID playerUuid, String name, UUID worldUuid,
                       double x, double y, double z, float yaw) {
@@ -74,6 +84,61 @@ public class JumpRecord {
         return true;
     }
     
+    /** Returns a general description of the jump. */
+    public String getDescription() {
+        if (this.isPublic())
+            return "\""+name+"\" (Public)";
+        else
+            return "\""+name+"\" ("+getPlayerRecord().username+")";
+    }
+    
+    /** Return a description of the jump for the given player. */
+    public String getDescriptionForPlayer(Player player) {
+        // Public jump?
+        if (this.isPublic())
+            return "\""+name+"\" (Public)";
+        // Jump belongs to player?
+        else if (playerUuid.equals(player.getUniqueId()))
+            return "\""+name+"\"";
+        // Jump belongs to another player?
+        else
+            return "\""+name+"\" ("+getPlayerRecord().username+")";
+    }
+    
+    /** Returns the jump location. */
+    public Location getLocation() {
+        World world = Bukkit.getServer().getWorld(worldUuid);
+        return new Location(world, x, y, z, yaw, 0);
+    }
+    
+    /** Returns the player record to which the jump record belongs. */
+    public PlayerRecord getPlayerRecord() {
+        return PlayerRecord.load(playerUuid);
+    }
+    
+    public boolean isPrivate() { return (playerUuid != null); }
+    public boolean isPublic()  { return (playerUuid == null); }
+    
+    /** Makes the jump public. */
+    public void makePublic() { playerUuid = null; }
+    
+    /** Sets the jump location. */
+    public void setLocation(Location l) {
+        worldUuid = l.getWorld().getUID();
+        x = l.getX(); y = l.getY(); z = l.getZ();
+        yaw = l.getYaw();
+    }
+    
+    /**
+     * Teleports the player to the jump location.
+     * @return true if teleport was successful.
+     */
+    public boolean teleportPlayer(Player player) {
+        Location l = getLocation();
+        l.getWorld().loadChunk((int)x, (int)z);
+        return player.teleport(l, PlayerTeleportEvent.TeleportCause.PLUGIN);
+    }
+    
     /**
      * Gets the jump record with the given ID from the database.  Logs errors.
      * @param  id ID of the jump.
@@ -114,7 +179,8 @@ public class JumpRecord {
         final String sql = "SELECT * FROM jumps WHERE `player_uuid`=? AND `name`=? LIMIT 1;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, playerUuid.toString());
+            ps.setString(1, (playerUuid != null) ?
+                    playerUuid.toString() : SqlPublicUuid.toString());
             ps.setString(2, name);
             ResultSet rs = ps.executeQuery();
             
@@ -168,7 +234,7 @@ public class JumpRecord {
             try (PreparedStatement ps = conn.prepareStatement(
                     insertSql, Statement.RETURN_GENERATED_KEYS)) {
                 // Set parameters
-                ps.setString(1, playerUuid.toString());
+                ps.setObject(1, (playerUuid != null ) ? playerUuid.toString() : null, Types.CHAR);
                 ps.setString(2, name);
                 ps.setString(3, worldUuid.toString());
                 ps.setDouble(4, x);

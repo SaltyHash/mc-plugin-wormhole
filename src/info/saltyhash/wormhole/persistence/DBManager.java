@@ -4,18 +4,24 @@ import java.io.File;
 import java.sql.*;
 import java.util.logging.Logger;
 
-/**
- * Manages the database.
- *
- * Usage:
- * DBManager.logger = ...;  // Optional
- * DBManager.setDbFile(new File("/path/to/database.sqlite"));
- * Connection conn  = DBManager.getConnection();
- */
+/** Manages the database. */
 public final class DBManager {
+    private static Connection connection;
+    private static File dbFile;
+    public  static Logger logger;
+    
     private DBManager() {}
     
-    private static Connection connection;
+    public static void setup(File dbFile) {
+        DBManager.setup(dbFile, null);
+    }
+    
+    public static void setup(File dbFile, Logger logger) {
+        closeConnection();
+        DBManager.dbFile = dbFile;
+        DBManager.logger = logger;
+    }
+    
     /**
      * Returns a connection to the database, reusing previous connection if possible.
      * The connection is configured with foreign keys ON.  Logs errors.
@@ -47,16 +53,6 @@ public final class DBManager {
             return (connection = null);
         }
         
-        /*
-        // Disable autocommit
-        try {
-            connection.setAutoCommit(false);
-        } catch (SQLException e) {
-            logWarning("Failed to disable database autocommit");
-            logWarning(e.toString());
-        }
-        */
-    
         return connection;
     }
     
@@ -87,15 +83,6 @@ public final class DBManager {
         return success;
     }
     
-    /** The database file.  Setting this will close any existing connection. */
-    private static File dbFile;
-    public static File getDbFile() { return dbFile; }
-    public static void setDbFile(File newDbFile) {
-        dbFile = newDbFile;
-        closeConnection();
-    }
-    
-    public  static Logger logger;
     static void logInfo(String msg) {
         if (logger != null) logger.info(msg);
     }

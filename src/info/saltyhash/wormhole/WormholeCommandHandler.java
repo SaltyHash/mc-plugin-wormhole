@@ -2,6 +2,9 @@ package info.saltyhash.wormhole;
 
 import java.util.Arrays;
 import java.util.List;
+
+import info.saltyhash.wormhole.persistence.JumpRecord;
+import info.saltyhash.wormhole.persistence.PlayerRecord;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -15,38 +18,32 @@ import org.bukkit.util.BlockIterator;
 
 /** Handles commands given to Wormhole. */
 class WormholeCommandHandler implements CommandExecutor {
-    private final Wormhole wormhole;
+    private final Wormhole    wormhole;
     private final EconManager econMgr;
-    private final JumpManager jumpMgr;
-    private final PlayerManager playerMgr;
-    private final SignManager signMgr;
     
-    public final String usageAdd     = "/worm add [player | pub] <Jump name>";
-    public final String usageBack    = "/worm back [player | pub] <Jump name>";
-    public final String usageCost    = "/worm cost";
-    public final String usageDel     = "/worm del [player | pub] <Jump name>";
-    public final String usageJump    = "/worm jump [player | pub] <Jump name>";
-    public final String usageList    = "/worm list [player | pub] [page]";
-    public final String usageReload  = "/wormhole reload";
-    public final String usageRename  = "/worm rename [player | pub] <old name> <new name>";
-    public final String usageReplace = "/worm replace [player | pub] <Jump name>";
-    public final String usageSet     = "/worm set [player | pub] <Jump name>";
-    public final String usageUnset   = "/worm unset";
-    public final String usageVersion = "/wormhole version";
+    public static final String usageAdd     = "/worm add [player | pub] <Jump name>";
+    public static final String usageBack    = "/worm back";
+    public static final String usageCost    = "/worm cost";
+    public static final String usageDel     = "/worm del [player | pub] <Jump name>";
+    public static final String usageJump    = "/worm jump [player | pub] <Jump name>";
+    public static final String usageList    = "/worm list [player | pub] [page]";
+    public static final String usageReload  = "/wormhole reload";
+    public static final String usageRename  = "/worm rename [player | pub] <old name> <new name>";
+    public static final String usageReplace = "/worm replace [player | pub] <Jump name>";
+    public static final String usageSet     = "/worm set [player | pub] <Jump name>";
+    public static final String usageUnset   = "/worm unset";
+    public static final String usageVersion = "/wormhole version";
     
-    WormholeCommandHandler(Wormhole wormhole, EconManager econMgr,
-            JumpManager jumpMgr, PlayerManager playerMgr, SignManager signMgr) {
-        this.wormhole  = wormhole;
-        this.econMgr   = econMgr;
-        this.jumpMgr   = jumpMgr;
-        this.playerMgr = playerMgr;
-        this.signMgr   = signMgr;
+    WormholeCommandHandler(Wormhole wormhole, EconManager econMgr) {
+        this.wormhole = wormhole;
+        this.econMgr  = econMgr;
     }
     
+    /**
+     *  Handles the "wormhole add" command.
+     * Usage: /worm add [pub | player] <jump name>
+     */
     private void commandAdd(CommandSender sender, String[] args) {
-        /* Handles the "wormhole add" command.
-         * Usage: /worm add [pub | player] <jump name>
-         */
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -54,36 +51,33 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "add")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to add new Jumps");
-            return;
-        }
-        
-        // Get jump from args
-        Jump jump = this.getJumpFromArgs(player, args);
-        if (jump == null) {
+        // Get jump info from args
+        String[] jumpInfo = getJumpInfoFromArgs(player, args);
+        // Parse error?
+        if (jumpInfo == null) {
             // Display usage
-            player.sendMessage(this.usageAdd);
+            player.sendMessage(usageAdd);
             return;
         }
-        jump.setDest(player.getLocation());
+        String playerName = jumpInfo[0];
+        String jumpName   = jumpInfo[1];
         
         // Check permissions
-        if (jump.isPublic()) {
+        // Public jump?
+        if (playerName == null) {
             if (!player.hasPermission("wormhole.add.public")) {
                 player.sendMessage(ChatColor.DARK_RED+"You cannot add public Jumps");
                 return;
             }
         }
-        else if (jump.playerName.equals(player.getName())) {
+        // Jump belonging to the player?
+        else if (playerName.equalsIgnoreCase(player.getName())) {
             if (!player.hasPermission("wormhole.add.private")) {
                 player.sendMessage(ChatColor.DARK_RED+"You cannot add your own Jumps");
                 return;
             }
         }
+        // Jump belonging to another player?
         else {
             if (!player.hasPermission("wormhole.add.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
@@ -92,116 +86,132 @@ class WormholeCommandHandler implements CommandExecutor {
             }
         }
         
-        // Execute command to add Jump
-        int result = this.jumpMgr.addJump(jump);
-        
-        // Success
-        if (result == 0) {
-            player.sendMessage(ChatColor.DARK_GREEN+"Added"+ChatColor.RESET+
-                " Jump "+jump.getDescriptionForPlayer(player));
-            
-            // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "add");
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "add")) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "You cannot afford to add new Jumps");
+            return;
         }
         
-        // Player does not exist
-        else if (result == 1)
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to add Jump; player \"%s\" does not exist", jump.playerName));
-        
-        // Jump already exists
-        else if (result == 2)
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to add Jump; Jump %s already exists",
-                jump.getDescriptionForPlayer(player)));
-        
-        // Failure; unknown reason
-        else {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to add Jump; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
-                "Player \"%s\" failed to add Jump %s; unknown reason",
-                player.getName(), jump.getDescription()));
+        // Get player record for jump
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        // Player does not exist?
+        if (playerRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to add jump; "+
+                    "player '"+playerName+"' does not exist");
+            return;
         }
+        
+        // Check if jump record already exists
+        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        if (jumpRecord != null) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to add jump; jump "+
+                    jumpRecord.getDescriptionForPlayer(player)+" already exists");
+        }
+        
+        // Create new JumpRecord
+        jumpRecord = new JumpRecord(playerRecord.uuid, jumpName,
+                null, 0, 0, 0, 0);
+        jumpRecord.setLocation(player.getLocation());
+        
+        // Save jump record; failed (unknown reason)?
+        if (!jumpRecord.save()) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to add jump; unknown reason");
+            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to add jump "+
+                    jumpRecord.getDescription()+"; unknown reason");
+            return;
+        }
+        
+        player.sendMessage(ChatColor.DARK_GREEN+"Added"+ChatColor.RESET+
+                " jump "+jumpRecord.getDescriptionForPlayer(player));
+        
+        // Charge player
+        if (!player.hasPermission("wormhole.free"))
+            econMgr.charge(player, "add");
     }
     
+    /**
+     * Handles the "back" command.
+     * Usage: /worm back
+     */
     private void commandBack(CommandSender sender) {
-        /* Handles the "wormhole back" command.
-         * Usage: /worm back
-         */
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
             return;
         }
         Player player = (Player)sender;
         
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "back")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to jump back to your previous location");
-            return;
-        }
-        
         // Check permissions
         if (!player.hasPermission("wormhole.back")) {
             player.sendMessage(ChatColor.DARK_RED+
-                "You cannot jump back to your previous location");
+                    "You cannot jump back to your previous location");
             return;
         }
         
-        // Get player's previous Jump
-        Jump jumpLast = this.playerMgr.getLastJump(player);
-        if (jumpLast == null) {
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "back")) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "You cannot afford to jump back to your previous location");
+            return;
+        }
+        
+        // Get player's previous jump location
+        Location previousLocation = PlayerManager.getPreviousLocation(player);
+        if (previousLocation == null) {
             player.sendMessage(ChatColor.DARK_RED+"No previous location to jump to");
             return;
         }
         
-        // Play teleport effect
-        this.wormhole.playTeleportEffect(player.getLocation());
+        // Create a fake JumpRecord to use its teleport method
+        JumpRecord prevJumpRecord = new JumpRecord();
+        prevJumpRecord.setLocation(previousLocation);
         
-        // Jump the player to previous location
-        int result = jumpLast.jumpPlayer(player);
+        // Get the player's current location as the new previous location
+        Location newPreviousLocation = player.getLocation();
         
-        // Success
-        if (result == 0) {
-            // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "back");
-        }
-        
-        // Failure
-        else {
+        // Teleport the player to the previous location; failed?
+        if (!prevJumpRecord.teleportPlayer(player)) {
             player.sendMessage(ChatColor.DARK_RED+
-                "Failed to jump to previous location; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
-                "Failed to jump player \"%s\" to previous location; unknown reason",
-                player.getName()));
+                    "Failed to jump to previous location; unknown reason");
+            wormhole.getLogger().warning("Failed to jump player '"+player.getName()+
+                    "' to previous location; unknown reason");
             return;
         }
         
         // Play teleport effect
-        this.wormhole.playTeleportEffect(player.getLocation());
+        wormhole.playTeleportEffect(newPreviousLocation);
+        wormhole.playTeleportEffect(player.getLocation());
+        
+        // Save the new previous location
+        PlayerManager.setPreviousLocation(player, newPreviousLocation);
+    
+        // Charge player
+        if (!player.hasPermission("wormhole.free"))
+            econMgr.charge(player, "back");
     }
     
+    /**
+     * Handles the "cost" command.
+     * Usage: /worm cost
+     */
     private void commandCost(CommandSender sender) {
-        /* Handles the "/worm cost" command. */
-        if (!this.econMgr.isEnabled()) {
-            sender.sendMessage(ChatColor.DARK_RED+
-                "Economy system does not exist");
+        if (!econMgr.isEnabled()) {
+            sender.sendMessage(ChatColor.DARK_RED+"Economy system does not exist");
             return;
         }
         
-        FileConfiguration config = this.wormhole.getConfig();
-        String add     = this.econMgr.econ.format(config.getDouble("cost.add"));
-        String back    = this.econMgr.econ.format(config.getDouble("cost.back"));
-        String del     = this.econMgr.econ.format(config.getDouble("cost.del"));
-        String jump    = this.econMgr.econ.format(config.getDouble("cost.jump"));
-        String rename  = this.econMgr.econ.format(config.getDouble("cost.rename"));
-        String replace = this.econMgr.econ.format(config.getDouble("cost.replace"));
-        String set     = this.econMgr.econ.format(config.getDouble("cost.set"));
-        String unset   = this.econMgr.econ.format(config.getDouble("cost.unset"));
-        String use     = this.econMgr.econ.format(config.getDouble("cost.use"));
+        FileConfiguration config = wormhole.getConfig();
+        String add     = econMgr.econ.format(config.getDouble("cost.add"));
+        String back    = econMgr.econ.format(config.getDouble("cost.back"));
+        String del     = econMgr.econ.format(config.getDouble("cost.del"));
+        String jump    = econMgr.econ.format(config.getDouble("cost.jump"));
+        String rename  = econMgr.econ.format(config.getDouble("cost.rename"));
+        String replace = econMgr.econ.format(config.getDouble("cost.replace"));
+        String set     = econMgr.econ.format(config.getDouble("cost.set"));
+        String unset   = econMgr.econ.format(config.getDouble("cost.unset"));
+        String use     = econMgr.econ.format(config.getDouble("cost.use"));
         
         sender.sendMessage(String.format(
             "%sWormhole Costs%s\n"+
@@ -231,17 +241,17 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "del")) {
+                && !econMgr.hasBalance(player, "del")) {
             player.sendMessage(ChatColor.DARK_RED+
                 "You cannot afford to delete Jumps");
             return;
         }
         
         // Get jump from args
-        Jump jump = this.getJumpFromArgs(player, args);
+        Jump jump = getJumpInfoFromArgs(player, args);
         if (jump == null) {
             // Display usage
-            player.sendMessage(this.usageDel);
+            player.sendMessage(usageDel);
             return;
         }
         
@@ -267,7 +277,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Delete jump
-        int result = this.jumpMgr.delJump(jump);
+        int result = jumpMgr.delJump(jump);
         
         // Success
         if (result == 0) {
@@ -276,7 +286,7 @@ class WormholeCommandHandler implements CommandExecutor {
             
             // Charge player
             if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "del");
+                econMgr.charge(player, "del");
         }
         
         // Failure; jump DNE
@@ -287,7 +297,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Failure; unknown reason
         else {
             sender.sendMessage(ChatColor.DARK_RED+"Failed to delete Jump; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
+            wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to delete Jump %s; unknown reason",
                 player.getName(), jump.getDescription()));
         }
@@ -306,17 +316,17 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "jump")) {
+                && !econMgr.hasBalance(player, "jump")) {
             player.sendMessage(ChatColor.DARK_RED+
                 "You cannot afford to jump directly to a Jump");
             return;
         }
 
         // Get jump from args
-        Jump jumpArg = this.getJumpFromArgs(player, args);
+        Jump jumpArg = getJumpInfoFromArgs(player, args);
         if (jumpArg == null) {
             // Display usage
-            player.sendMessage(this.usageJump);
+            player.sendMessage(usageJump);
             return;
         }
         
@@ -344,12 +354,12 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Get specified Jump
-        Jump jump = this.jumpMgr.getJump(jumpArg.playerName, jumpArg.jumpName);
+        Jump jump = jumpMgr.getJump(jumpArg.playerName, jumpArg.jumpName);
         if (jump == null) {
             player.sendMessage(ChatColor.DARK_RED+"Failed to jump; Jump does not exist");
             // Tell player if a public jump with the same name exists
             if (jumpArg.isPrivate() && player.hasPermission("wormhole.list.public")
-                    && this.jumpMgr.getJump("", jumpArg.jumpName) != null)
+                    && jumpMgr.getJump("", jumpArg.jumpName) != null)
                 player.sendMessage("Did you mean \"pub "+jumpArg.jumpName+"\"?");
             return;
         }
@@ -363,21 +373,21 @@ class WormholeCommandHandler implements CommandExecutor {
         if (result == 0) {
             // Charge player
             if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "jump");
+                econMgr.charge(player, "jump");
         }
             
         // Failure
         else {
             player.sendMessage(ChatColor.DARK_RED+"Failed to jump; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
+            wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to Jump to %s; unknown reason",
                 player.getName(), jump.getDescription()));
             return;
         }
         
         // Play teleport effects
-        this.wormhole.playTeleportEffect(from);
-        this.wormhole.playTeleportEffect(player.getLocation());
+        wormhole.playTeleportEffect(from);
+        wormhole.playTeleportEffect(player.getLocation());
     }
     
     private void commandList(CommandSender sender, String[] args) {
@@ -415,7 +425,7 @@ class WormholeCommandHandler implements CommandExecutor {
                         playerName = "";
                     // Player jump list
                     else playerName =
-                        this.wormhole.getServer().getOfflinePlayer(args[0]).getName();
+                        wormhole.getServer().getOfflinePlayer(args[0]).getName();
                 }
             }
             
@@ -428,13 +438,13 @@ class WormholeCommandHandler implements CommandExecutor {
                     playerName = "";
                 // Player jump list
                 else playerName =
-                    this.wormhole.getServer().getOfflinePlayer(args[0]).getName();
+                    wormhole.getServer().getOfflinePlayer(args[0]).getName();
                 page = Integer.parseInt(args[1]);
             }
         }
         catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
             // Display command usage
-            sender.sendMessage(this.usageList);
+            sender.sendMessage(usageList);
             return;
         }
         if (page < 1) page = 1;
@@ -461,11 +471,11 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Get list of jump names
-        List<String> jumpNames = this.jumpMgr.getJumpNameList(playerName);
+        List<String> jumpNames = jumpMgr.getJumpNameList(playerName);
         // Unknown error
         if (jumpNames == null) {
             sender.sendMessage(ChatColor.DARK_RED+"Failed to list Jumps; unknown reason");
-            this.wormhole.getLogger().warning(
+            wormhole.getLogger().warning(
                 String.format("%s failed to list Jumps for player \"%s\" for unknown reason",
                     sender.getName(), playerName));
             return;
@@ -502,7 +512,7 @@ class WormholeCommandHandler implements CommandExecutor {
             ChatColor.DARK_AQUA, page, ChatColor.RESET,
             ChatColor.DARK_AQUA, pages, ChatColor.RESET);
         for (String jumpName : jumpNames) {
-            Jump jump = this.jumpMgr.getJump(playerName, jumpName);
+            Jump jump = jumpMgr.getJump(playerName, jumpName);
             if (jump == null) continue;
             msg += String.format(ChatColor.RESET+
                 "\n- %s%s%s:  W:%s%s%s  X:%s%d%s  Y:%s%d%s  Z:%s%d%s",
@@ -522,9 +532,9 @@ class WormholeCommandHandler implements CommandExecutor {
                 "You cannot reload the Wormhole config");
             return;
         }
-        this.wormhole.reloadConfig();
+        wormhole.reloadConfig();
         sender.sendMessage(ChatColor.DARK_GREEN+"Wormhole config reloaded");
-        this.wormhole.getLogger().info("Config reloaded by "+sender.getName());
+        wormhole.getLogger().info("Config reloaded by "+sender.getName());
     }
     
     private void commandRename(CommandSender sender, String[] args) {
@@ -540,7 +550,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "rename")) {
+                && !econMgr.hasBalance(player, "rename")) {
             player.sendMessage(ChatColor.DARK_RED+
                 "You cannot afford to rename Jumps");
             return;
@@ -551,19 +561,19 @@ class WormholeCommandHandler implements CommandExecutor {
         try {
             // Get new name from last arg
             nameNew = args[args.length-1];
-            // Remove the last index from args for getJumpFromArgs method
+            // Remove the last index from args for getJumpInfoFromArgs method
             args = Arrays.copyOfRange(args, 0, args.length-1);
         }
         catch (ArrayIndexOutOfBoundsException e) {
-            player.sendMessage(this.usageRename);
+            player.sendMessage(usageRename);
             return;
         }
-        Jump jump = this.getJumpFromArgs(player, args);
+        Jump jump = getJumpInfoFromArgs(player, args);
         
         // Check jump and new name
         if (jump == null || nameNew == null) {
             // Display usage
-            player.sendMessage(this.usageRename);
+            player.sendMessage(usageRename);
             return;
         }
         
@@ -589,7 +599,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Get old jump
-        Jump jumpOld = this.jumpMgr.getJump(jump.playerName, jump.jumpName);
+        Jump jumpOld = jumpMgr.getJump(jump.playerName, jump.jumpName);
         if (jumpOld == null) {
             player.sendMessage(String.format(ChatColor.DARK_RED+
                 "Failed to rename Jump; Jump %s does not exist",
@@ -600,7 +610,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Get new Jump
         Jump jumpNew = jumpOld.clone();
         jumpNew.jumpName = nameNew;
-        if (this.jumpMgr.exists(jumpNew)) {
+        if (jumpMgr.exists(jumpNew)) {
             player.sendMessage(String.format(ChatColor.DARK_RED+
                 "Failed to rename Jump; Jump %s already exists",
                 jumpNew.getDescriptionForPlayer(player)));
@@ -608,7 +618,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Execute command to rename Jump
-        int result = this.jumpMgr.updateJump(jumpOld, jumpNew);
+        int result = jumpMgr.updateJump(jumpOld, jumpNew);
         
         // Success
         if (result == 0) {
@@ -619,7 +629,7 @@ class WormholeCommandHandler implements CommandExecutor {
             
             // Charge player
             if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "rename");
+                econMgr.charge(player, "rename");
         }
         
         // Player does not exist
@@ -637,7 +647,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Failure; unknown reason
         else {
             player.sendMessage(ChatColor.DARK_RED+"Failed to rename Jump; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
+            wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to rename Jump %s to \"%s\"; unknown reason",
                 player.getName(), jumpOld.getDescription(), nameNew));
         }
@@ -656,17 +666,17 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "replace")) {
+                && !econMgr.hasBalance(player, "replace")) {
             player.sendMessage(ChatColor.DARK_RED+
                 "You cannot afford to replace Jumps");
             return;
         }
         
         // Get jump from args
-        Jump jumpOld = this.getJumpFromArgs(player, args);
+        Jump jumpOld = getJumpInfoFromArgs(player, args);
         if (jumpOld == null) {
             // Display usage
-            player.sendMessage(this.usageReplace);
+            player.sendMessage(usageReplace);
             return;
         }
         Jump jumpNew = jumpOld.clone();
@@ -694,7 +704,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Execute command to replace old jump with new jump
-        int result = this.jumpMgr.updateJump(jumpOld, jumpNew);
+        int result = jumpMgr.updateJump(jumpOld, jumpNew);
         
         // Success
         if (result == 0) {
@@ -703,7 +713,7 @@ class WormholeCommandHandler implements CommandExecutor {
             
             // Charge player
             if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "replace");
+                econMgr.charge(player, "replace");
         }
         
         // Player does not exist
@@ -720,7 +730,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Failure; unknown reason
         else {
             player.sendMessage(ChatColor.DARK_RED+"Failed to replace Jump; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
+            wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to replace Jump %s; unknown reason",
                 player.getName(), jumpNew.getDescription()));
         }
@@ -739,17 +749,17 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "set")) {
+                && !econMgr.hasBalance(player, "set")) {
             player.sendMessage(ChatColor.DARK_RED+
                 "You cannot afford to set signs to Jumps");
             return;
         }
         
         // Get jump from args
-        Jump jumpArg = this.getJumpFromArgs(player, args);
+        Jump jumpArg = getJumpInfoFromArgs(player, args);
         if (jumpArg == null) {
             // Display usage
-            player.sendMessage(this.usageSet);
+            player.sendMessage(usageSet);
             return;
         }
         
@@ -777,13 +787,13 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Get actual jump
-        Jump jump = this.jumpMgr.getJump(jumpArg.playerName, jumpArg.jumpName);
+        Jump jump = jumpMgr.getJump(jumpArg.playerName, jumpArg.jumpName);
         if (jump == null) {
             player.sendMessage(ChatColor.DARK_RED+
                 "Failed to set sign; Jump does not exist");
             // Tell player if a public jump with the same name exists
             if (jumpArg.isPrivate() && player.hasPermission("wormhole.list.public")
-                    && this.jumpMgr.getJump("", jumpArg.jumpName) != null)
+                    && jumpMgr.getJump("", jumpArg.jumpName) != null)
                 player.sendMessage("Did you mean \"pub "+jumpArg.jumpName+"\"?");
             return;
         }
@@ -805,7 +815,7 @@ class WormholeCommandHandler implements CommandExecutor {
         Sign sign = (Sign)target.getState();
         
         // Set sign jump destination
-        int result = this.signMgr.addSignJump(sign, jump);
+        int result = signMgr.addSignJump(sign, jump);
         
         // Success
         if (result == 0) {
@@ -813,7 +823,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 " to Jump "+jump.getDescriptionForPlayer(player));
             // Charge player
             if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "set");
+                econMgr.charge(player, "set");
         }
         
         // Sign already set
@@ -825,7 +835,7 @@ class WormholeCommandHandler implements CommandExecutor {
         else {
             player.sendMessage(ChatColor.DARK_RED+
                 "Failed to set sign; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
+            wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to set sign (%s, %d, %d, %d) "+
                 "to Jump %s; unknown reason",
                 player.getName(), sign.getWorld().getName(), sign.getX(),
@@ -861,7 +871,7 @@ class WormholeCommandHandler implements CommandExecutor {
         Sign sign = (Sign)target.getState();
         
         // Get jump destination from sign
-        Jump jump = this.signMgr.getSignJump(sign);
+        Jump jump = signMgr.getSignJump(sign);
         // Check jump
         if (jump == null) {
             player.sendMessage(ChatColor.DARK_GREEN+"That sign is not set");
@@ -870,7 +880,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !this.econMgr.hasBalance(player, "unset")) {
+                && !econMgr.hasBalance(player, "unset")) {
             player.sendMessage(ChatColor.DARK_RED+
                 "You cannot afford to unset signs pointing to Jumps");
             return;
@@ -900,7 +910,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Delete sign
-        int result = this.signMgr.delSignJump(sign);
+        int result = signMgr.delSignJump(sign);
         
         // Success
         if (result == 0) {
@@ -910,7 +920,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 jump.getDescriptionForPlayer(player)));
             // Charge player
             if (!player.hasPermission("wormhole.free"))
-                this.econMgr.charge(player, "unset");
+                econMgr.charge(player, "unset");
         }
         
         // Sign not set
@@ -921,7 +931,7 @@ class WormholeCommandHandler implements CommandExecutor {
         else {
             player.sendMessage(ChatColor.DARK_RED+
                 "Failed to unset sign; unknown reason");
-            this.wormhole.getLogger().warning(String.format(
+            wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to unset sign (%s, %d, %d, %d) "+
                 "pointing to Jump %s; unknown reason",
                 player.getName(), sign.getWorld().getName(), sign.getX(),
@@ -943,51 +953,57 @@ class WormholeCommandHandler implements CommandExecutor {
             "%sWormhole%s v%s\n"+
             "Author: Austin Bowen <austin.bowen.314@gmail.com>",
             ChatColor.DARK_PURPLE, ChatColor.RESET,
-            this.wormhole.getDescription().getVersion()));
+            wormhole.getDescription().getVersion()));
     }
     
-    private Jump getJumpFromArgs(Player player, String[] args) {
-        /* Returns a Jump with jumpName and playerName set from args.
-         * Format: [player | pub] <Jump name>
-         */
-        Jump jump = new Jump();
+    /**
+     * Parses arguments and returns an array containing 0) the player name
+     * and 1) the jump name, or null on parse error.
+     * Format: [player | pub] <jump name>
+     */
+    private String[] getJumpInfoFromArgs(Player player, String[] args) {
+        String playerName;
+        String jumpName;
         
         // Parse arguments
         try {
-            // Private Jump
+            // Private jump
             if (args.length == 1) {
                 // Check args
                 if (args[0].isEmpty()) return null;
-                // Player name is current player, jump name in 1st arg
-                jump.playerName = player.getName();
-                jump.jumpName   = args[0];
+                // Player name is current player, jump name in 0th arg
+                playerName = player.getName();
+                jumpName   = args[0];
             }
             
-            // Public Jump
+            // Public jump
             else if (args[0].equalsIgnoreCase("pub")) {
                 // Check args
                 if (args[1].isEmpty()) return null;
                 // Player name empty to designate public Jump,
-                // and jump name in 2nd arg
-                jump.setPublic();
-                jump.jumpName = args[1];
+                // and jump name in 1st arg
+                playerName = null;
+                jumpName   = args[1];
             }
             
-            // Other player's Jump
+            // Other player's jump
             else {
                 // Check args
                 if (args[0].isEmpty() || args[1].isEmpty()) return null;
-                // Player name in 1st arg, jump name in 2nd arg
-                jump.playerName = this.wormhole.getServer().getOfflinePlayer(args[0]).getName();
-                jump.jumpName   = args[1];
+                // Player name in 0th arg, jump name in 1st arg
+                playerName = args[0];
+                jumpName   = args[1];
             }
         }
         catch (ArrayIndexOutOfBoundsException e) {
-            // Failed to get Jump
+            // Parse error
             return null;
         }
         
-        return jump;
+        String[] result = new String[2];
+        result[0] = playerName;
+        result[1] = jumpName;
+        return result;
     }
     
     @Override
@@ -1009,18 +1025,18 @@ class WormholeCommandHandler implements CommandExecutor {
             }
             
             // Give action to appropriate handler function
-            if      (action.equals("add"))     this.commandAdd(sender, args);
-            else if (action.equals("back"))    this.commandBack(sender);
-            else if (action.equals("cost"))    this.commandCost(sender);
-            else if (action.equals("del"))     this.commandDel(sender, args);
-            else if (action.equals("jump"))    this.commandJump(sender, args);
-            else if (action.equals("list"))    this.commandList(sender, args);
-            else if (action.equals("reload"))  this.commandReload(sender);
-            else if (action.equals("rename"))  this.commandRename(sender, args);
-            else if (action.equals("replace")) this.commandReplace(sender, args);
-            else if (action.equals("set"))     this.commandSet(sender, args);
-            else if (action.equals("unset"))   this.commandUnset(sender, args);
-            else if (action.equals("version")) this.commandVersion(sender);
+            if      (action.equals("add"))     commandAdd(sender, args);
+            else if (action.equals("back"))    commandBack(sender);
+            else if (action.equals("cost"))    commandCost(sender);
+            else if (action.equals("del"))     commandDel(sender, args);
+            else if (action.equals("jump"))    commandJump(sender, args);
+            else if (action.equals("list"))    commandList(sender, args);
+            else if (action.equals("reload"))  commandReload(sender);
+            else if (action.equals("rename"))  commandRename(sender, args);
+            else if (action.equals("replace")) commandReplace(sender, args);
+            else if (action.equals("set"))     commandSet(sender, args);
+            else if (action.equals("unset"))   commandUnset(sender, args);
+            else if (action.equals("version")) commandVersion(sender);
             else return false;
             return true;
         }

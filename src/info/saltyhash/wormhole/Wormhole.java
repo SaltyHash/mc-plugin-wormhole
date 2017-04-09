@@ -13,57 +13,55 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 /** Wormhole plugin. */
 public class Wormhole extends JavaPlugin {
-    
     @Override
     public void onEnable() {
         // Get the path of the data folder: "/path/to/plugins/Wormhole/"
-        String dataPath = this.getDataFolder().getAbsolutePath() + File.separator;
+        final String dataPath = getDataFolder().getAbsolutePath() + File.separator;
         
         // Save default config (doesn't overwrite)
-        this.saveDefaultConfig();
+        saveDefaultConfig();
         
         // Set up the database
-        DBManager.logger = this.getLogger();
-        DBManager.dbFile = new File(dataPath +"Wormhole.sqlite");
+        DBManager.setup(new File(dataPath+"Wormhole.sqlite"), getLogger());
         if (!DBManager.migrate()) {
-            this.disable();
+            disable();
             return;
         }
+        
+        // Set up PlayerManager
+        PlayerManager.setup(this);
         
         // Set up Economy
         EconManager econMgr = new EconManager(this);
         
         // Register event handler and command handler
-        this.getServer().getPluginManager().registerEvents(
-            new WormholeEventHandler(this, econMgr), this);
-        /*
-        WormholeCommandHandler handler =
-            new WormholeCommandHandler(this, econMgr);
-        this.getCommand("wormhole").setExecutor(handler);
-        */
+        getServer().getPluginManager().registerEvents(
+                new WormholeEventHandler(this, econMgr), this);
+        getCommand("wormhole").setExecutor(
+                new WormholeCommandHandler(this, econMgr));
         
         // Save logged in players to the database
-        for (Player player : this.getServer().getOnlinePlayers()) {
+        for (Player player : getServer().getOnlinePlayers()) {
             PlayerRecord pr = new PlayerRecord(player);
             if (!pr.save()) {
-                this.getLogger().warning("Failed to save player '" +
+                getLogger().warning("Failed to save player '" +
                         player.getName() + "' to the database."
                 );
             }
         }
         
-        this.getLogger().info("Enabled");
+        getLogger().info("Enabled");
     }
     
     @Override
     public void onDisable() {
         DBManager.closeConnection();
-        this.getLogger().info("Disabled");
+        getLogger().info("Disabled");
     }
     
     /** Disables the plugin; used in fatal error situations. */
     private void disable() {
-        this.getServer().getPluginManager().disablePlugin(this);
+        getServer().getPluginManager().disablePlugin(this);
     }
     
     void playTeleportEffect(Location location) {
@@ -92,35 +90,4 @@ public class Wormhole extends JavaPlugin {
             }
         }
     }
-    
-    /*
-    /** Sets up the database.  Only run during startup.
-     *
-     * @return true / false on success / failure.
-     *
-    private boolean setupDatabase() {
-        // Check if we need to rename the DB file from "Wormhole.sqlite.db"
-        // (versions <=1.3.4), to just "Wormhole.sqlite" (versions >= 1.4.0).
-        // dataPath = "/path/to/plugins/Wormhole/"
-        String dataPath = this.getDataFolder().getAbsolutePath()+File.separator;
-        File oldDBFile  = new File(dataPath+"Wormhole.sqlite.db");
-        File newDBFile  = new File(dataPath+"Wormhole.sqlite");
-        // Old DB file exists and the new one does not?
-        if (oldDBFile.exists() && !newDBFile.exists()) {
-            // Rename the old DB file to the new filename
-            if (oldDBFile.renameTo(newDBFile)) {
-                // Successfully renamed DB file
-                this.getLogger().info("Renamed SQLite database file from "
-                        +"'Wormhole.sqlite.db' to 'Wormhole.sqlite'.");
-            } else {
-                // Failed to rename DB file; abort.
-                this.getLogger().severe(
-                        "Failed to rename SQLite database file!");
-                return false;
-            }
-        }
-        
-        return true;
-    }
-    */
 }

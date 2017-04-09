@@ -36,10 +36,6 @@ public class SignRecord {
         this.jumpId    = rs.getInt("jump_id");
     }
     
-    public JumpRecord getJumpRecord() {
-        return JumpRecord.load(jumpId);
-    }
-    
     /**
      * Deletes the sign record from the database.  Logs errors.
      * @return true on success (even if record DNE); false on SQL error.
@@ -63,6 +59,10 @@ public class SignRecord {
             return false;
         }
         return true;
+    }
+    
+    public JumpRecord getJumpRecord() {
+        return JumpRecord.load(jumpId);
     }
     
     /**
