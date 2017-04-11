@@ -1,6 +1,7 @@
 package info.saltyhash.wormhole;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import info.saltyhash.wormhole.persistence.JumpRecord;
@@ -15,6 +16,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.util.BlockIterator;
 
 /** Handles commands given to Wormhole. */
@@ -978,21 +980,29 @@ class WormholeCommandHandler implements CommandExecutor {
         }
     }
     
+    /** Handles the "/wormhole version" command. */
     private void commandVersion(CommandSender sender) {
-        /* Handles the "/wormhole version" command. */
         // Check permissions
         if (!sender.hasPermission("wormhole.version")) {
-            sender.sendMessage(ChatColor.DARK_RED+
-                "You cannot view Wormhole version information");
+            sender.sendMessage(ChatColor.DARK_RED+"You cannot view Wormhole version information");
             return;
         }
         
-        // Display Wormhole version
-        sender.sendMessage(String.format(
-            "%sWormhole%s v%s\n"+
-            "Author: Austin Bowen <austin.bowen.314@gmail.com>",
-            ChatColor.DARK_PURPLE, ChatColor.RESET,
-            wormhole.getDescription().getVersion()));
+        // Build and send message
+        PluginDescriptionFile pdf = wormhole.getDescription();
+        List<String> authors = pdf.getAuthors();
+        Collections.sort(authors);
+        StringBuilder msg = new StringBuilder();
+        msg.append(String.format("%s%s%s v%s",
+                ChatColor.DARK_PURPLE, pdf.getFullName(), ChatColor.RESET, pdf.getVersion()));
+        if (authors.size() == 1) {
+            msg.append("\nAuthor: ").append(authors.get(0));
+        } else if (authors.size() > 1) {
+            msg.append("\nAuthors:");
+            for (String author : authors)
+                msg.append("\n    ").append(author);
+        }
+        sender.sendMessage(msg.toString());
     }
     
     /**
@@ -1064,19 +1074,22 @@ class WormholeCommandHandler implements CommandExecutor {
             }
             
             // Give action to appropriate handler function
-            if      (action.equals("add"))     commandAdd(sender, args);
-            else if (action.equals("back"))    commandBack(sender);
-            else if (action.equals("cost"))    commandCost(sender);
-            else if (action.equals("del"))     commandDel(sender, args);
-            else if (action.equals("jump"))    commandJump(sender, args);
-            else if (action.equals("list"))    commandList(sender, args);
-            else if (action.equals("reload"))  commandReload(sender);
-            else if (action.equals("rename"))  commandRename(sender, args);
-            else if (action.equals("replace")) commandReplace(sender, args);
-            else if (action.equals("set"))     commandSet(sender, args);
-            else if (action.equals("unset"))   commandUnset(sender, args);
-            else if (action.equals("version")) commandVersion(sender);
-            else return false;
+            switch (action) {
+                case "add"    : commandAdd(sender, args);     break;
+                case "back"   : commandBack(sender);          break;
+                case "cost"   : commandCost(sender);          break;
+                case "del"    : commandDel(sender, args);     break;
+                case "jump"   : commandJump(sender, args);    break;
+                case "list"   : commandList(sender, args);    break;
+                case "reload" : commandReload(sender);        break;
+                case "rename" : commandRename(sender, args);  break;
+                case "replace": commandReplace(sender, args); break;
+                case "set"    : commandSet(sender, args);     break;
+                case "unset"  : commandUnset(sender, args);   break;
+                case "version": commandVersion(sender);       break;
+                default:
+                    sender.sendMessage(ChatColor.DARK_RED+"Unrecognized command");
+            }
             return true;
         }
         
