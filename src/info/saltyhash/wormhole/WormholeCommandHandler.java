@@ -21,18 +21,19 @@ class WormholeCommandHandler implements CommandExecutor {
     private final Wormhole    wormhole;
     private final EconManager econMgr;
     
-    public static final String usageAdd     = "/worm add [player | pub] <Jump name>";
-    public static final String usageBack    = "/worm back";
-    public static final String usageCost    = "/worm cost";
-    public static final String usageDel     = "/worm del [player | pub] <Jump name>";
-    public static final String usageJump    = "/worm jump [player | pub] <Jump name>";
-    public static final String usageList    = "/worm list [player | pub] [page]";
-    public static final String usageReload  = "/wormhole reload";
-    public static final String usageRename  = "/worm rename [player | pub] <old name> <new name>";
-    public static final String usageReplace = "/worm replace [player | pub] <Jump name>";
-    public static final String usageSet     = "/worm set [player | pub] <Jump name>";
-    public static final String usageUnset   = "/worm unset";
-    public static final String usageVersion = "/wormhole version";
+    // Command usage strings
+    private static final String usageAdd     = "/worm add [player | pub] <Jump name>";
+    private static final String usageBack    = "/worm back";
+    private static final String usageCost    = "/worm cost";
+    private static final String usageDel     = "/worm del [player | pub] <Jump name>";
+    private static final String usageJump    = "/worm jump [player | pub] <Jump name>";
+    private static final String usageList    = "/worm list [player | pub] [page]";
+    private static final String usageReload  = "/wormhole reload";
+    private static final String usageRename  = "/worm rename [player | pub] <old name> <new name>";
+    private static final String usageReplace = "/worm replace [player | pub] <Jump name>";
+    private static final String usageSet     = "/worm set [player | pub] <Jump name>";
+    private static final String usageUnset   = "/worm unset";
+    private static final String usageVersion = "/wormhole version";
     
     WormholeCommandHandler(Wormhole wormhole, EconManager econMgr) {
         this.wormhole = wormhole;
@@ -228,10 +229,11 @@ class WormholeCommandHandler implements CommandExecutor {
             add, back, del, jump, rename, replace, set, unset, use));
     }
     
+    /**
+     * Handles the "wormhole del" command.
+     * Usage: /worm del [player| pub] <Jump name>
+     */
     private void commandDel(CommandSender sender, String[] args) {
-        /* Handles the "wormhole del" command.
-         * Usage: /worm del [player| pub] <Jump name>
-         */
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -239,68 +241,77 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "del")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to delete Jumps");
-            return;
-        }
-        
-        // Get jump from args
-        Jump jump = getJumpInfoFromArgs(player, args);
-        if (jump == null) {
-            // Display usage
+        // Get jump info from args
+        String[] jumpInfo = getJumpInfoFromArgs(player, args);
+        // Parse error?
+        if (jumpInfo == null) {
             player.sendMessage(usageDel);
             return;
         }
+        String playerName = jumpInfo[0];
+        String jumpName   = jumpInfo[1];
         
         // Check permissions
-        if (jump.isPublic()) {
+        // Public jump?
+        if (playerName == null) {
             if (!player.hasPermission("wormhole.del.public")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot delete public Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot delete public jumps");
                 return;
             }
         }
-        else if (jump.playerName.equals(player.getName())) {
+        // Jump belongs to the player?
+        else if (playerName.equalsIgnoreCase(player.getName())) {
             if (!player.hasPermission("wormhole.del.private")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot delete your Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot delete your jumps");
                 return;
             }
         }
+        // Jump belongs to other player?
         else {
             if (!player.hasPermission("wormhole.del.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot delete other players' Jumps");
+                    "You cannot delete other players' jumps");
                 return;
             }
         }
         
-        // Delete jump
-        int result = jumpMgr.delJump(jump);
-        
-        // Success
-        if (result == 0) {
-            player.sendMessage(ChatColor.DARK_GREEN+"Deleted"+ChatColor.RESET+
-                " Jump "+jump.getDescriptionForPlayer(player));
-            
-            // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                econMgr.charge(player, "del");
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "del")) {
+            player.sendMessage(ChatColor.DARK_RED+"You cannot afford to delete jumps");
+            return;
         }
         
-        // Failure; jump DNE
-        else if (result == 1)
-            sender.sendMessage(ChatColor.DARK_RED+
-                "Failed to delete Jump; Jump does not exist");
-        
-        // Failure; unknown reason
-        else {
-            sender.sendMessage(ChatColor.DARK_RED+"Failed to delete Jump; unknown reason");
-            wormhole.getLogger().warning(String.format(
-                "Player \"%s\" failed to delete Jump %s; unknown reason",
-                player.getName(), jump.getDescription()));
+        // Retrieve the player record
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        if (playerRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "Failed to delete jump; player '"+playerName+"' does not exist."
+            );
+            return;
         }
+        
+        // Retrieve the jump record
+        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        if (jumpRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to delete jump; jump does not exist.");
+            return;
+        }
+        
+        // Delete the jump; failed?
+        if (!jumpRecord.delete()) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to delete jump; unknown error.");
+            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to delete jump "+
+                    jumpRecord.getDescription()+"; unknown reason.");
+            return;
+        }
+        
+        player.sendMessage(ChatColor.DARK_GREEN+"Deleted"+ChatColor.RESET+
+            " jump "+jumpRecord.getDescriptionForPlayer(player));
+        
+        // Charge player
+        if (!player.hasPermission("wormhole.free"))
+            econMgr.charge(player, "del");
     }
     
     private void commandJump(CommandSender sender, String[] args) {
