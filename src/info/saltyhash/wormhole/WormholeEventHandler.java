@@ -45,7 +45,7 @@ class WormholeEventHandler implements Listener {
         if (!player.hasPermission("wormhole.free")
                 && !econMgr.hasBalance(player, "use")) {
             player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to use signs pointing to Jumps");
+                "You cannot afford to use signs pointing to jumps");
             return;
         }
         
@@ -53,21 +53,21 @@ class WormholeEventHandler implements Listener {
         if (jump.isPublic()) {
             if (!player.hasPermission("wormhole.use.public")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot use signs pointing to public Jumps");
+                    "You cannot use signs pointing to public jumps");
                 return;
             }
         }
         else if (jump.getPlayerRecord().username.equals(player.getName())) {
             if (!player.hasPermission("wormhole.use.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot use signs pointing to your Jumps");
+                    "You cannot use signs pointing to your jumps");
                 return;
             }
         }
         else {
             if (!player.hasPermission("wormhole.use.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot use signs pointing to other players' Jumps");
+                    "You cannot use signs pointing to jumps that belong to other players");
                 return;
             }
         }
@@ -86,7 +86,7 @@ class WormholeEventHandler implements Listener {
         
         // Notify player of where they just jumped to
         player.sendMessage(ChatColor.DARK_PURPLE+"Jumped"+ChatColor.RESET+
-                " to "+jump.getDescriptionForPlayer(player));
+                " to "+jump.getDescription(player));
         
         // Play teleport effect
         wormhole.playTeleportEffect(from);
@@ -120,7 +120,7 @@ class WormholeEventHandler implements Listener {
         if (!player.hasPermission("wormhole.free")
                 && !econMgr.hasBalance(player, "unset")) {
             player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to unset signs pointing to Jumps");
+                "You cannot afford to unset signs pointing to jumps");
             event.setCancelled(true);
             return;
         }
@@ -129,7 +129,7 @@ class WormholeEventHandler implements Listener {
         if (jump.isPublic()) {
             if (!player.hasPermission("wormhole.unset.public")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot unset signs pointing to public Jumps");
+                    "You cannot unset signs pointing to public jumps");
                 event.setCancelled(true);
                 return;
             }
@@ -137,7 +137,7 @@ class WormholeEventHandler implements Listener {
         else if (jump.getPlayerRecord().username.equals(player.getName())) {
             if (!player.hasPermission("wormhole.unset.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot unset signs pointing to your Jumps");
+                    "You cannot unset signs pointing to your jumps");
                 event.setCancelled(true);
                 return;
             }
@@ -145,7 +145,7 @@ class WormholeEventHandler implements Listener {
         else {
             if (!player.hasPermission("wormhole.unset.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot unset signs pointing to other players' Jumps");
+                    "You cannot unset signs pointing to jumps that belong to other players");
                 event.setCancelled(true);
                 return;
             }
@@ -154,7 +154,7 @@ class WormholeEventHandler implements Listener {
         // Delete sign succeeded?
         if (signRecord.delete()) {
             player.sendMessage(ChatColor.DARK_GREEN+"Unset sign"+ChatColor.RESET+
-                " pointing to Jump "+jump.getDescriptionForPlayer(player));
+                " pointing to jump "+jump.getDescription(player));
             
             // Charge player
             if (!player.hasPermission("wormhole.free"))
@@ -166,7 +166,7 @@ class WormholeEventHandler implements Listener {
                 "Failed to unset sign; unknown reason");
             wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to unset sign (%s, %d, %d, %d) "+
-                "pointing to Jump %s; unknown reason",
+                "pointing to jump %s; unknown reason",
                 player.getName(), sign.getWorld().getName(), sign.getX(),
                 sign.getY(), sign.getZ(), jump.getDescription()));
         }
@@ -194,11 +194,9 @@ class WormholeEventHandler implements Listener {
                 && !player.hasPermission("wormhole.use.private")) return;
         else if (!player.hasPermission("wormhole.use.other")) return;
         
-        // Display Jump
-        player.sendMessage(String.format(
-            "%sSign is set%s to Jump %s",
-            ChatColor.DARK_PURPLE, ChatColor.RESET,
-            jumpRecord.getDescriptionForPlayer(player)));
+        // Display jump
+        player.sendMessage(String.format("%sSign is set%s to jump %s",
+            ChatColor.DARK_PURPLE, ChatColor.RESET, jumpRecord.getDescription(player)));
     }
 
     /** Called when player interacts with something. */
