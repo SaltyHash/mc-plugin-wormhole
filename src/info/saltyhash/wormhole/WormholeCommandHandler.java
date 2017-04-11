@@ -348,7 +348,7 @@ class WormholeCommandHandler implements CommandExecutor {
         else if (playerName.equalsIgnoreCase(player.getName())) {
             if (!player.hasPermission("wormhole.jump.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot jump directly to your Jumps");
+                    "You cannot jump directly to your jumps");
                 return;
             }
         }
@@ -356,7 +356,7 @@ class WormholeCommandHandler implements CommandExecutor {
         else {
             if (!player.hasPermission("wormhole.jump.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot jump directly to Jumps belonging to other players");
+                    "You cannot jump directly to jumps that belong to other players");
                 return;
             }
         }
@@ -365,7 +365,7 @@ class WormholeCommandHandler implements CommandExecutor {
         if (!player.hasPermission("wormhole.free")
                 && !econMgr.hasBalance(player, "jump")) {
             player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot afford to jump directly to a Jump");
+                    "You cannot afford to jump directly to a jump");
             return;
         }
         
@@ -793,7 +793,7 @@ class WormholeCommandHandler implements CommandExecutor {
         if (!player.hasPermission("wormhole.free")
                 && !econMgr.hasBalance(player, "set")) {
             player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to set signs to Jumps");
+                "You cannot afford to set signs to jumps");
             return;
         }
         
@@ -809,21 +809,21 @@ class WormholeCommandHandler implements CommandExecutor {
         if (jumpArg.isPublic()) {
             if (!player.hasPermission("wormhole.set.public")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot set signs to public Jumps");
+                    "You cannot set signs to public jumps");
                 return;
             }
         }
         else if (jumpArg.playerName.equals(player.getName())) {
             if (!player.hasPermission("wormhole.set.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot set signs to your Jumps");
+                    "You cannot set signs to your jumps");
                 return;
             }
         }
         else {
             if (!player.hasPermission("wormhole.set.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot set signs to other players' Jumps");
+                    "You cannot set signs to jumps that belong to other players");
                 return;
             }
         }
@@ -832,7 +832,7 @@ class WormholeCommandHandler implements CommandExecutor {
         Jump jump = jumpMgr.getJump(jumpArg.playerName, jumpArg.jumpName);
         if (jump == null) {
             player.sendMessage(ChatColor.DARK_RED+
-                "Failed to set sign; Jump does not exist");
+                "Failed to set sign; jump does not exist");
             // Tell player if a public jump with the same name exists
             if (jumpArg.isPrivate() && player.hasPermission("wormhole.list.public")
                     && jumpMgr.getJump("", jumpArg.jumpName) != null)
@@ -862,7 +862,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Success
         if (result == 0) {
             player.sendMessage(ChatColor.DARK_GREEN+"Set sign"+ChatColor.RESET+
-                " to Jump "+jump.getDescription(player));
+                " to jump "+jump.getDescription(player));
             // Charge player
             if (!player.hasPermission("wormhole.free"))
                 econMgr.charge(player, "set");
@@ -879,7 +879,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 "Failed to set sign; unknown reason");
             wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to set sign (%s, %d, %d, %d) "+
-                "to Jump %s; unknown reason",
+                "to jump %s; unknown reason",
                 player.getName(), sign.getWorld().getName(), sign.getX(),
                 sign.getY(), sign.getZ(), jump.getDescription()));
         }
@@ -925,7 +925,7 @@ class WormholeCommandHandler implements CommandExecutor {
         if (!player.hasPermission("wormhole.free")
                 && !econMgr.hasBalance(player, "unset")) {
             player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to unset signs pointing to Jumps");
+                "You cannot afford to unset signs pointing to jumps");
             return;
         }
         
@@ -933,21 +933,21 @@ class WormholeCommandHandler implements CommandExecutor {
         if (jump.isPublic()) {
             if (!player.hasPermission("wormhole.unset.public")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot unset signs pointing to public Jumps");
+                    "You cannot unset signs pointing to public jumps");
                 return;
             }
         }
         else if (jump.playerName.equals(player.getName())) {
             if (!player.hasPermission("wormhole.unset.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot unset signs pointing to your Jumps");
+                    "You cannot unset signs pointing to your jumps");
                 return;
             }
         }
         else {
             if (!player.hasPermission("wormhole.unset.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot unset signs pointing to other players' Jumps");
+                    "You cannot unset signs pointing to jumps that belong to other players");
                 return;
             }
         }
@@ -958,7 +958,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Success
         if (result == 0) {
             player.sendMessage(String.format(
-                "%sUnset sign%s pointing to Jump %s",
+                "%sUnset sign%s pointing to jump %s",
                 ChatColor.DARK_GREEN, ChatColor.RESET,
                 jump.getDescription(player)));
             // Charge player
@@ -976,7 +976,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 "Failed to unset sign; unknown reason");
             wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to unset sign (%s, %d, %d, %d) "+
-                "pointing to Jump %s; unknown reason",
+                "pointing to jump %s; unknown reason",
                 player.getName(), sign.getWorld().getName(), sign.getX(),
                 sign.getY(), sign.getZ(), jump.getDescription()));
         }
@@ -1034,8 +1034,7 @@ class WormholeCommandHandler implements CommandExecutor {
             else if (args[0].equalsIgnoreCase("pub")) {
                 // Check args
                 if (args[1].isEmpty()) return null;
-                // Player name empty to designate public Jump,
-                // and jump name in 1st arg
+                // Player name empty to designate public jump, and jump name in 1st arg
                 playerName = null;
                 jumpName   = args[1];
             }
