@@ -67,7 +67,7 @@ public final class DBManager {
             try {
                 if (!connection.isClosed()) {
                     try {
-                        connection.commit();
+                        if (!connection.getAutoCommit()) connection.commit();
                     } catch (SQLException e) {
                         logSevere("Failed to commit changes to database before closing");
                         success = false;

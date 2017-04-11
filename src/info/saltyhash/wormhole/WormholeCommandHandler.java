@@ -381,7 +381,8 @@ class WormholeCommandHandler implements CommandExecutor {
         JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
         // Jump does not exist?
         if (jumpRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to jump; jump does not exist");
+            player.sendMessage(ChatColor.DARK_RED+"Failed to jump; jump "+
+                    JumpRecord.getDescription(player, playerName, jumpName)+" does not exist");
             // TODO: Tell player if a public jump with the same name exists
             /*if (jumpArg.isPrivate() && player.hasPermission("wormhole.list.public")
                     && jumpMgr.getJump("", jumpArg.jumpName) != null)
@@ -402,7 +403,10 @@ class WormholeCommandHandler implements CommandExecutor {
         // Play teleport effects
         wormhole.playTeleportEffect(from);
         wormhole.playTeleportEffect(player.getLocation());
-    
+        
+        // Store previous location
+        PlayerManager.setPreviousLocation(player, from);
+        
         // Charge player
         if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "jump");
     }
@@ -749,8 +753,8 @@ class WormholeCommandHandler implements CommandExecutor {
         JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
         // Jump does not exist?
         if (jumpRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to replace jump; jump '"+
-                    JumpRecord.getDescription(player, playerName, jumpName)+"' does not exist");
+            player.sendMessage(ChatColor.DARK_RED+"Failed to replace jump; jump "+
+                    JumpRecord.getDescription(player, playerName, jumpName)+" does not exist");
             return;
         }
         
@@ -847,14 +851,6 @@ class WormholeCommandHandler implements CommandExecutor {
     
         // Get sign block
         Block target = player.getTargetBlock((Set<Material>) null, 5);
-        // TODO: Get rid of this
-        /*Block target = null;
-        BlockIterator bit = new BlockIterator(player, 5);
-        while (bit.hasNext()) {
-            target = bit.next();
-            if (target.getState() instanceof Sign) break;
-            else target = null;
-        }*/
         if (target == null || !(target.getState() instanceof Sign)) {
             player.sendMessage(ERROR_MSG_PREFIX+"you must be looking at a sign");
             return;
@@ -900,16 +896,6 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Get target block
         Block target = player.getTargetBlock((Set<Material>) null, 5);
-        // TODO: Remove this
-        /*
-        Block target = null;
-        BlockIterator bit = new BlockIterator(player, 5);
-        while (bit.hasNext()) {
-            target = bit.next();
-            if (target.getState() instanceof Sign) break;
-            else target = null;
-        }
-        */
         // Target is not a sign?
         if (target == null || !(target.getState() instanceof Sign)) {
             player.sendMessage(ERROR_MSG_PREFIX+"you must be looking at a sign");
@@ -1012,10 +998,9 @@ class WormholeCommandHandler implements CommandExecutor {
         // Build and send message
         PluginDescriptionFile pdf = wormhole.getDescription();
         List<String> authors = pdf.getAuthors();
-        Collections.sort(authors);
+        //Collections.sort(authors);
         StringBuilder msg = new StringBuilder();
-        msg.append(String.format("%s%s%s v%s",
-                ChatColor.DARK_PURPLE, pdf.getFullName(), ChatColor.RESET, pdf.getVersion()));
+        msg.append(ChatColor.DARK_PURPLE).append(pdf.getFullName()).append(ChatColor.RESET);
         if (authors.size() == 1) {
             msg.append("\nAuthor: ").append(authors.get(0));
         } else if (authors.size() > 1) {

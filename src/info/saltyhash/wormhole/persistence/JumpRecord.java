@@ -163,13 +163,8 @@ public class JumpRecord {
                     playerUuid.toString() : SqlPublicUuid.toString());
             ResultSet rs = ps.executeQuery();
             
-            // Get number of results
-            rs.last();
-            int resultCount = rs.getRow()+1;
-            rs.beforeFirst();
-            
             // Get JumpRecords from the result set and return
-            List<JumpRecord> jumpRecords = new ArrayList<>(resultCount);
+            List<JumpRecord> jumpRecords = new ArrayList<>();
             while (rs.next())
                 jumpRecords.add(new JumpRecord(rs));
             return jumpRecords;
