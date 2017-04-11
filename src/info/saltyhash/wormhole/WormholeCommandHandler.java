@@ -44,7 +44,7 @@ class WormholeCommandHandler implements CommandExecutor {
     }
     
     /**
-     *  Handles the "wormhole add" command.
+     * Handles the "add" command.
      * Usage: /worm add [pub | player] <jump name>
      */
     private void commandAdd(CommandSender sender, String[] args) {
@@ -93,8 +93,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
                 && !econMgr.hasBalance(player, "add")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot afford to add new Jumps");
+            player.sendMessage(ChatColor.DARK_RED+"You cannot afford to add new jumps");
             return;
         }
         
@@ -233,7 +232,7 @@ class WormholeCommandHandler implements CommandExecutor {
     }
     
     /**
-     * Handles the "wormhole del" command.
+     * Handles the "del" command.
      * Usage: /worm del [player| pub] <jump name>
      */
     private void commandDel(CommandSender sender, String[] args) {
@@ -318,7 +317,7 @@ class WormholeCommandHandler implements CommandExecutor {
     }
     
     /**
-     * Handles the "wormhole jump" command.
+     * Handles the "jump" command.
      * Usage: /worm jump [player | pub] <jump name>
      */
     private void commandJump(CommandSender sender, String[] args) {
@@ -343,8 +342,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Jump is public?
         if (playerName == null) {
             if (!player.hasPermission("wormhole.jump.public")) {
-                player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot jump directly to public Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot jump directly to public jumps");
                 return;
             }
         }
@@ -414,7 +412,7 @@ class WormholeCommandHandler implements CommandExecutor {
     }
     
     /**
-     * Handles the "wormhole list" command.
+     * Handles the "list" command.
      * Usage: /worm list [pub | player] [page]
      */
     private void commandList(CommandSender sender, String[] args) {
@@ -521,13 +519,6 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         
-        /*
-        // Make list of jump names
-        List<String> jumpNames = new ArrayList<>(jumpRecords.size());
-        for (JumpRecord jumpRecord : jumpRecords)
-            jumpNames.add(jumpRecord.name);
-        */
-        
         // Get number of pages
         int pages = (jumpRecords.size()/pageSize)+((jumpRecords.size()%pageSize) != 0 ? 1 : 0);
         if (page > pages) page = pages;
@@ -566,7 +557,10 @@ class WormholeCommandHandler implements CommandExecutor {
         sender.sendMessage(msg.toString());
     }
     
-    /** Handles the "/wormhole reload" command. */
+    /**
+     * Handles the "reload" command.
+     * Usage: /worm reload
+     */
     private void commandReload(CommandSender sender) {
         if (!sender.hasPermission("wormhole.reload")) {
             sender.sendMessage(ChatColor.DARK_RED+"You cannot reload the Wormhole config");
@@ -578,8 +572,8 @@ class WormholeCommandHandler implements CommandExecutor {
     }
     
     /**
-     * Handles the "worm rename" command.
-     * Usage:  /worm [player | pub] <old name> <new name>
+     * Handles the "rename" command.
+     * Usage:  /worm rename [player | pub] <old name> <new name>
      */
     private void commandRename(CommandSender sender, String[] args) {
         // Make sure sender is a player
@@ -694,24 +688,17 @@ class WormholeCommandHandler implements CommandExecutor {
             econMgr.charge(player, "rename");
     }
     
+    /**
+     * Handles the "replace" command.
+     * Usage:  /worm replace [player | pub] <jump name>
+     */
     private void commandReplace(CommandSender sender, String[] args) {
-        /* Handles the "worm replace" command.
-         * Usage:  /worm replace [player | pub] <Jump name>
-         */
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
             return;
         }
         Player player = (Player)sender;
-        
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "replace")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to replace Jumps");
-            return;
-        }
         
         // Get jump from args
         Jump jumpOld = getJumpInfoFromArgs(player, args);
@@ -742,6 +729,13 @@ class WormholeCommandHandler implements CommandExecutor {
                     "You cannot replace Jumps for other players");
                 return;
             }
+        }
+        
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "replace")) {
+            player.sendMessage(ChatColor.DARK_RED+"You cannot afford to replace Jumps");
+            return;
         }
         
         // Execute command to replace old jump with new jump
@@ -777,10 +771,11 @@ class WormholeCommandHandler implements CommandExecutor {
         }
     }
     
+    /**
+     * Handles the "set" command.
+     * Usage:  /worm set [player | pub] <jump name>
+     */
     private void commandSet(CommandSender sender, String[] args) {
-        /* Handles the "worm set" command.
-         * Usage:  /worm set [player | pub] <Jump name>
-         */
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -884,10 +879,11 @@ class WormholeCommandHandler implements CommandExecutor {
         }
     }
     
+    /**
+     * Handles the "unset" command.
+     * Usage:  /worm unset
+     */
     private void commandUnset(CommandSender sender, String[] args) {
-        /* Handles the "wormhole unset" command.
-         * Usage:  /worm unset
-         */
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -980,7 +976,10 @@ class WormholeCommandHandler implements CommandExecutor {
         }
     }
     
-    /** Handles the "/wormhole version" command. */
+    /**
+     * Handles the "version" command.
+     * Usage: /worm version
+     */
     private void commandVersion(CommandSender sender) {
         // Check permissions
         if (!sender.hasPermission("wormhole.version")) {
@@ -1055,9 +1054,9 @@ class WormholeCommandHandler implements CommandExecutor {
         return result;
     }
     
+    /** Called when a command is issued. */
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        /* Called when command is issued. */
         String cmdName = cmd.getName().toLowerCase();
         
         if (cmdName.equals("wormhole")) {
