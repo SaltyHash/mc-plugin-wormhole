@@ -22,18 +22,18 @@ class WormholeCommandHandler implements CommandExecutor {
     private final EconManager econMgr;
     
     // Command usage strings
-    private static final String usageAdd     = "/worm add [player | pub] <Jump name>";
-    private static final String usageBack    = "/worm back";
-    private static final String usageCost    = "/worm cost";
-    private static final String usageDel     = "/worm del [player | pub] <Jump name>";
-    private static final String usageJump    = "/worm jump [player | pub] <Jump name>";
+    private static final String usageAdd     = "/worm add [player | pub] <jump name>";
+    //private static final String usageBack    = "/worm back";
+    //private static final String usageCost    = "/worm cost";
+    private static final String usageDel     = "/worm del [player | pub] <jump name>";
+    private static final String usageJump    = "/worm jump [player | pub] <jump name>";
     private static final String usageList    = "/worm list [player | pub] [page]";
-    private static final String usageReload  = "/wormhole reload";
+    //private static final String usageReload  = "/wormhole reload";
     private static final String usageRename  = "/worm rename [player | pub] <old name> <new name>";
-    private static final String usageReplace = "/worm replace [player | pub] <Jump name>";
-    private static final String usageSet     = "/worm set [player | pub] <Jump name>";
-    private static final String usageUnset   = "/worm unset";
-    private static final String usageVersion = "/wormhole version";
+    private static final String usageReplace = "/worm replace [player | pub] <jump name>";
+    private static final String usageSet     = "/worm set [player | pub] <jump name>";
+    //private static final String usageUnset   = "/worm unset";
+    //private static final String usageVersion = "/wormhole version";
     
     WormholeCommandHandler(Wormhole wormhole, EconManager econMgr) {
         this.wormhole = wormhole;
@@ -231,7 +231,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "wormhole del" command.
-     * Usage: /worm del [player| pub] <Jump name>
+     * Usage: /worm del [player| pub] <jump name>
      */
     private void commandDel(CommandSender sender, String[] args) {
         // Make sure sender is a player
@@ -314,10 +314,11 @@ class WormholeCommandHandler implements CommandExecutor {
             econMgr.charge(player, "del");
     }
     
+    /**
+     * Handles the "wormhole jump" command.
+     * Usage: /worm jump [player | pub] <jump name>
+     */
     private void commandJump(CommandSender sender, String[] args) {
-        /* Handles the "wormhole jump" command.
-         * Usage: /worm jump [player | pub] <Jump name>
-         */
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -325,37 +326,34 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "jump")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to jump directly to a Jump");
-            return;
-        }
-
-        // Get jump from args
-        Jump jumpArg = getJumpInfoFromArgs(player, args);
-        if (jumpArg == null) {
-            // Display usage
+        // Get jump info from args
+        String[] jumpInfo = getJumpInfoFromArgs(player, args);
+        // Parse error?
+        if (jumpInfo == null) {
             player.sendMessage(usageJump);
             return;
         }
+        String playerName = jumpInfo[0];
+        String jumpName   = jumpInfo[1];
         
         // Check permissions
-        if (jumpArg.isPublic()) {
+        // Jump is public?
+        if (playerName == null) {
             if (!player.hasPermission("wormhole.jump.public")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot jump directly to public Jumps");
                 return;
             }
         }
-        else if (jumpArg.playerName.equals(player.getName())) {
+        // Jump belongs to the player?
+        else if (playerName.equalsIgnoreCase(player.getName())) {
             if (!player.hasPermission("wormhole.jump.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot jump directly to your Jumps");
                 return;
             }
         }
+        // Jump belongs to other player?
         else {
             if (!player.hasPermission("wormhole.jump.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
@@ -364,41 +362,52 @@ class WormholeCommandHandler implements CommandExecutor {
             }
         }
         
-        // Get specified Jump
-        Jump jump = jumpMgr.getJump(jumpArg.playerName, jumpArg.jumpName);
-        if (jump == null) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to jump; Jump does not exist");
-            // Tell player if a public jump with the same name exists
-            if (jumpArg.isPrivate() && player.hasPermission("wormhole.list.public")
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "jump")) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "You cannot afford to jump directly to a Jump");
+            return;
+        }
+        
+        // Get the player record
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        // Player does not exist?
+        if (playerRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "Failed to jump; player '"+playerName+"' does not exist");
+            return;
+        }
+    
+        // Get the jump record
+        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        // Jump does not exist?
+        if (jumpRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to jump; jump does not exist");
+            // TODO: Tell player if a public jump with the same name exists
+            /*if (jumpArg.isPrivate() && player.hasPermission("wormhole.list.public")
                     && jumpMgr.getJump("", jumpArg.jumpName) != null)
-                player.sendMessage("Did you mean \"pub "+jumpArg.jumpName+"\"?");
+                player.sendMessage("Did you mean \"pub "+jumpArg.jumpName+"\"?");*/
             return;
         }
         
         Location from = player.getLocation();
         
-        // Jump the player
-        int result = jump.jumpPlayer(player);
-        
-        // Success
-        if (result == 0) {
-            // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                econMgr.charge(player, "jump");
-        }
-            
-        // Failure
-        else {
+        // Teleport the player; failed?
+        if (!jumpRecord.teleportPlayer(player)) {
             player.sendMessage(ChatColor.DARK_RED+"Failed to jump; unknown reason");
-            wormhole.getLogger().warning(String.format(
-                "Player \"%s\" failed to Jump to %s; unknown reason",
-                player.getName(), jump.getDescription()));
+            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to jump to "+
+                    jumpRecord.getDescription()+"; unknown reason");
             return;
         }
         
         // Play teleport effects
         wormhole.playTeleportEffect(from);
         wormhole.playTeleportEffect(player.getLocation());
+    
+        // Charge player
+        if (!player.hasPermission("wormhole.free"))
+            econMgr.charge(player, "jump");
     }
     
     private void commandList(CommandSender sender, String[] args) {
