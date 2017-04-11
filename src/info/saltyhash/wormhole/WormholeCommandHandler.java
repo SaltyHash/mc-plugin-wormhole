@@ -1,6 +1,5 @@
 package info.saltyhash.wormhole;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -565,11 +564,10 @@ class WormholeCommandHandler implements CommandExecutor {
         sender.sendMessage(msg.toString());
     }
     
+    /** Handles the "/wormhole reload" command. */
     private void commandReload(CommandSender sender) {
-        /* Handles the "/wormhole reload" command. */
         if (!sender.hasPermission("wormhole.reload")) {
-            sender.sendMessage(ChatColor.DARK_RED+
-                "You cannot reload the Wormhole config");
+            sender.sendMessage(ChatColor.DARK_RED+"You cannot reload the Wormhole config");
             return;
         }
         wormhole.reloadConfig();
@@ -577,10 +575,11 @@ class WormholeCommandHandler implements CommandExecutor {
         wormhole.getLogger().info("Config reloaded by "+sender.getName());
     }
     
+    /**
+     * Handles the "worm rename" command.
+     * Usage:  /worm [player | pub] <old name> <new name>
+     */
     private void commandRename(CommandSender sender, String[] args) {
-        /* Handles the "worm rename" command.
-         * Usage:  /worm [player | pub] <old name> <new name> 
-         */
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -588,19 +587,11 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "rename")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to rename Jumps");
-            return;
-        }
-        
-        // Get specified jump and new name
-        String nameNew;
+        // Get new jump name from args
+        String newJumpName;
         try {
             // Get new name from last arg
-            nameNew = args[args.length-1];
+            newJumpName = args[args.length-1];
             // Remove the last index from args for getJumpInfoFromArgs method
             args = Arrays.copyOfRange(args, 0, args.length-1);
         }
@@ -608,89 +599,97 @@ class WormholeCommandHandler implements CommandExecutor {
             player.sendMessage(usageRename);
             return;
         }
-        Jump jump = getJumpInfoFromArgs(player, args);
-        
-        // Check jump and new name
-        if (jump == null || nameNew == null) {
-            // Display usage
+        if (newJumpName == null) {
             player.sendMessage(usageRename);
             return;
         }
         
+        // Get existing jump info from args
+        String[] jumpInfo = getJumpInfoFromArgs(player, args);
+        // Parse error?
+        if (jumpInfo == null) {
+            player.sendMessage(usageRename);
+            return;
+        }
+        String playerName  = jumpInfo[0];
+        String oldJumpName = jumpInfo[1];
+        
         // Check permissions
-        if (jump.isPublic()) {
+        // Jump is public?
+        if (oldJumpName == null) {
             if (!player.hasPermission("wormhole.rename.public")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot rename public Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot rename public jumps");
                 return;
             }
         }
-        else if (jump.playerName.equals(player.getName())) {
+        // Jump belongs to the player?
+        else if (playerName.equals(player.getName())) {
             if (!player.hasPermission("wormhole.rename.private")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot rename your Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot rename your jumps");
                 return;
             }
         }
+        // Jump belongs to other player?
         else {
             if (!player.hasPermission("wormhole.rename.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot rename Jumps for other players");
+                    "You cannot rename jumps belonging to other players");
                 return;
             }
         }
-        
-        // Get old jump
-        Jump jumpOld = jumpMgr.getJump(jump.playerName, jump.jumpName);
-        if (jumpOld == null) {
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to rename Jump; Jump %s does not exist",
-                jump.getDescriptionForPlayer(player)));
+    
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "rename")) {
+            player.sendMessage(ChatColor.DARK_RED+"You cannot afford to rename jumps");
             return;
         }
         
-        // Get new Jump
-        Jump jumpNew = jumpOld.clone();
-        jumpNew.jumpName = nameNew;
-        if (jumpMgr.exists(jumpNew)) {
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to rename Jump; Jump %s already exists",
-                jumpNew.getDescriptionForPlayer(player)));
+        // Get the player record
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        // Player does not exist?
+        if (playerRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "Failed to rename jump; player '"+playerName+"' does not exist");
             return;
         }
         
-        // Execute command to rename Jump
-        int result = jumpMgr.updateJump(jumpOld, jumpNew);
-        
-        // Success
-        if (result == 0) {
-            player.sendMessage(String.format(
-                "%sRenamed%s Jump %s to \"%s\"",
-                ChatColor.DARK_GREEN, ChatColor.RESET,
-                jumpOld.getDescriptionForPlayer(player), nameNew));
-            
-            // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                econMgr.charge(player, "rename");
+        // Try to get a jump record matching the new name
+        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, newJumpName);
+        // Jump with new name already exists?
+        if (jumpRecord != null) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "Failed to rename jump; a jump named '"+newJumpName+"' already exists");
+            return;
         }
         
-        // Player does not exist
-        else if (result == 1)
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to rename Jump; player \"%s\" does not exist",
-                jumpOld.playerName));
-        
-        // Jump does not exist
-        else if (result == 2)
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to rename Jump; Jump %s does not exist",
-                jumpOld.getDescriptionForPlayer(player)));
-        
-        // Failure; unknown reason
-        else {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to rename Jump; unknown reason");
-            wormhole.getLogger().warning(String.format(
-                "Player \"%s\" failed to rename Jump %s to \"%s\"; unknown reason",
-                player.getName(), jumpOld.getDescription(), nameNew));
+        // Get the jump record with the old name
+        jumpRecord = JumpRecord.load(playerRecord.uuid, oldJumpName);
+        // Jump DNE?
+        if (jumpRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "Failed to rename jump; jump '"+oldJumpName+"' does not exist");
+            return;
         }
+        
+        // Save the new jump name
+        jumpRecord.name = newJumpName;
+        // Error?
+        if (!jumpRecord.save()) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to rename jump; unknown reason");
+            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to rename jump '"+
+                    oldJumpName+"' to '"+newJumpName+"'; unknown reason");
+            return;
+        }
+        
+        player.sendMessage(String.format(
+            "%sRenamed%s jump '%s' to %s",
+            ChatColor.DARK_GREEN, ChatColor.RESET,
+            oldJumpName, jumpRecord.getDescriptionForPlayer(player)));
+        
+        // Charge player
+        if (!player.hasPermission("wormhole.free"))
+            econMgr.charge(player, "rename");
     }
     
     private void commandReplace(CommandSender sender, String[] args) {
