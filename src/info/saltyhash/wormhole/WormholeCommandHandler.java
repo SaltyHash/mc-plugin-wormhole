@@ -20,7 +20,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginDescriptionFile;
-import org.bukkit.util.BlockIterator;
 
 /** Handles commands given to Wormhole. */
 class WormholeCommandHandler implements CommandExecutor {
@@ -889,7 +888,9 @@ class WormholeCommandHandler implements CommandExecutor {
      * Handles the "unset" command.
      * Usage:  /worm unset
      */
-    private void commandUnset(CommandSender sender, String[] args) {
+    private void commandUnset(CommandSender sender) {
+        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to unset sign; ";
+        
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -897,8 +898,10 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
-        // Get sign block
-        //Block target = player.getTargetBlock(null, 5);
+        // Get target block
+        Block target = player.getTargetBlock((Set<Material>) null, 5);
+        // TODO: Remove this
+        /*
         Block target = null;
         BlockIterator bit = new BlockIterator(player, 5);
         while (bit.hasNext()) {
@@ -906,44 +909,64 @@ class WormholeCommandHandler implements CommandExecutor {
             if (target.getState() instanceof Sign) break;
             else target = null;
         }
-        if (target == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "Failed to unset sign; you must be looking at a sign");
+        */
+        // Target is not a sign?
+        if (target == null || !(target.getState() instanceof Sign)) {
+            player.sendMessage(ERROR_MSG_PREFIX+"you must be looking at a sign");
             return;
         }
-        Sign sign = (Sign)target.getState();
+        Sign sign = (Sign) target.getState();
         
-        // Get jump destination from sign
-        Jump jump = signMgr.getSignJump(sign);
-        // Check jump
-        if (jump == null) {
-            player.sendMessage(ChatColor.DARK_GREEN+"That sign is not set");
+        // Get sign record
+        SignRecord signRecord = SignRecord.load(sign);
+        // Sign record does not exist?
+        if (signRecord == null) {
+            player.sendMessage(ERROR_MSG_PREFIX+"sign is not set to a jump");
             return;
         }
         
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "unset")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to unset signs pointing to jumps");
+        // Get jump record
+        JumpRecord jumpRecord = signRecord.getJumpRecord();
+        // Jump record DNE?  ==>  orphaned sign record, which should not happen.
+        if (jumpRecord == null) {
+            player.sendMessage(ERROR_MSG_PREFIX+"sign is not set to a jump");
+            wormhole.getLogger().warning("Player '"+player.getName()+
+                    "' tried to unset an orphaned sign record, which shouldn't exist; deleting.");
+            // Delete orphaned sign record; error?
+            if (!signRecord.delete()) {
+                wormhole.getLogger().warning("Failed to delete orphaned sign record");
+            }
+            return;
+        }
+        
+        // Get player record
+        PlayerRecord playerRecord = jumpRecord.getPlayerRecord();
+        // Player record DNE?  ==>  orphaned jump record, which should not happen.
+        if (playerRecord == null) {
+            player.sendMessage(ERROR_MSG_PREFIX+"internal error");
+            wormhole.getLogger().warning("Player '"+player.getName()+
+                    "' tried to unset a sign record for which no player record exists");
             return;
         }
         
         // Check permissions
-        if (jump.isPublic()) {
+        // Jump is public?
+        if (jumpRecord.isPublic()) {
             if (!player.hasPermission("wormhole.unset.public")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot unset signs pointing to public jumps");
                 return;
             }
         }
-        else if (jump.playerName.equals(player.getName())) {
+        // Jump belongs to the player?
+        else if (player.getUniqueId().equals(playerRecord.uuid)) {
             if (!player.hasPermission("wormhole.unset.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot unset signs pointing to your jumps");
                 return;
             }
         }
+        // Jump belongs to another player?
         else {
             if (!player.hasPermission("wormhole.unset.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
@@ -951,34 +974,28 @@ class WormholeCommandHandler implements CommandExecutor {
                 return;
             }
         }
-        
-        // Delete sign
-        int result = signMgr.delSignJump(sign);
-        
-        // Success
-        if (result == 0) {
-            player.sendMessage(String.format(
-                "%sUnset sign%s pointing to jump %s",
-                ChatColor.DARK_GREEN, ChatColor.RESET,
-                jump.getDescription(player)));
-            // Charge player
-            if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "unset");
-        }
-        
-        // Sign not set
-        else if (result == 1)
-            player.sendMessage(ChatColor.DARK_GREEN+"Sign not set");
-        
-        // Failure
-        else {
+    
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "unset")) {
             player.sendMessage(ChatColor.DARK_RED+
-                "Failed to unset sign; unknown reason");
-            wormhole.getLogger().warning(String.format(
-                "Player \"%s\" failed to unset sign (%s, %d, %d, %d) "+
-                "pointing to jump %s; unknown reason",
-                player.getName(), sign.getWorld().getName(), sign.getX(),
-                sign.getY(), sign.getZ(), jump.getDescription()));
+                    "You cannot afford to unset signs pointing to jumps");
+            return;
         }
+        
+        // Delete the sign record; error?
+        if (!signRecord.delete()) {
+            player.sendMessage(ERROR_MSG_PREFIX+"internal error");
+            wormhole.getLogger().warning(ChatColor.DARK_RED+"Player '"+player.getName()
+                    +"' failed to delete sign record");
+            return;
+        }
+        
+        player.sendMessage(ChatColor.DARK_GREEN+"Unset sign"+ChatColor.RESET+
+                " pointing to jump "+jumpRecord.getDescription(player));
+        
+        // Charge player
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "unset");
     }
     
     /**
@@ -1088,7 +1105,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 case "rename" : commandRename(sender, args);  break;
                 case "replace": commandReplace(sender, args); break;
                 case "set"    : commandSet(sender, args);     break;
-                case "unset"  : commandUnset(sender, args);   break;
+                case "unset"  : commandUnset(sender);         break;
                 case "version": commandVersion(sender);       break;
                 default:
                     sender.sendMessage(ChatColor.DARK_RED+"Unrecognized command");
