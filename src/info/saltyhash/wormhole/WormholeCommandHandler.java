@@ -1,7 +1,6 @@
 package info.saltyhash.wormhole;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -998,7 +997,6 @@ class WormholeCommandHandler implements CommandExecutor {
         // Build and send message
         PluginDescriptionFile pdf = wormhole.getDescription();
         List<String> authors = pdf.getAuthors();
-        //Collections.sort(authors);
         StringBuilder msg = new StringBuilder();
         msg.append(ChatColor.DARK_PURPLE).append(pdf.getFullName()).append(ChatColor.RESET);
         if (authors.size() == 1) {
