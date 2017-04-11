@@ -1,7 +1,6 @@
 package info.saltyhash.wormhole.persistence;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
 import java.sql.*;

@@ -27,6 +27,14 @@ public class Wormhole extends JavaPlugin {
             disable();
             return;
         }
+    
+        // Save logged in players to the database
+        for (Player player : getServer().getOnlinePlayers()) {
+            PlayerRecord pr = new PlayerRecord(player);
+            if (!pr.save()) {
+                getLogger().warning("Failed to save player '"+player.getName()+"' to the database");
+            }
+        }
         
         // Set up PlayerManager
         PlayerManager.setup(this);
@@ -37,18 +45,7 @@ public class Wormhole extends JavaPlugin {
         // Register event handler and command handler
         getServer().getPluginManager().registerEvents(
                 new WormholeEventHandler(this, econMgr), this);
-        getCommand("wormhole").setExecutor(
-                new WormholeCommandHandler(this, econMgr));
-        
-        // Save logged in players to the database
-        for (Player player : getServer().getOnlinePlayers()) {
-            PlayerRecord pr = new PlayerRecord(player);
-            if (!pr.save()) {
-                getLogger().warning("Failed to save player '" +
-                        player.getName() + "' to the database."
-                );
-            }
-        }
+        getCommand("wormhole").setExecutor(new WormholeCommandHandler(this, econMgr));
         
         getLogger().info("Enabled");
     }
