@@ -70,14 +70,14 @@ class WormholeCommandHandler implements CommandExecutor {
         // Public jump?
         if (playerName == null) {
             if (!player.hasPermission("wormhole.add.public")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot add public Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot add public jumps");
                 return;
             }
         }
         // Jump belonging to the player?
         else if (playerName.equalsIgnoreCase(player.getName())) {
             if (!player.hasPermission("wormhole.add.private")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot add your own Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot add your own jumps");
                 return;
             }
         }
@@ -85,7 +85,7 @@ class WormholeCommandHandler implements CommandExecutor {
         else {
             if (!player.hasPermission("wormhole.add.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot add Jumps for other players");
+                    "You cannot add jumps for other players");
                 return;
             }
         }
@@ -110,13 +110,11 @@ class WormholeCommandHandler implements CommandExecutor {
         JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
         if (jumpRecord != null) {
             player.sendMessage(ChatColor.DARK_RED+"Failed to add jump; jump "+
-                    jumpRecord.getDescriptionForPlayer(player)+" already exists");
+                    jumpRecord.getDescription(player)+" already exists");
         }
         
-        // Create new JumpRecord
-        jumpRecord = new JumpRecord(playerRecord.uuid, jumpName,
-                null, 0, 0, 0, 0);
-        jumpRecord.setLocation(player.getLocation());
+        // Create new jump record
+        jumpRecord = new JumpRecord(playerRecord.uuid, jumpName, player.getLocation());
         
         // Save jump record; failed (unknown reason)?
         if (!jumpRecord.save()) {
@@ -127,7 +125,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         player.sendMessage(ChatColor.DARK_GREEN+"Added"+ChatColor.RESET+
-                " jump "+jumpRecord.getDescriptionForPlayer(player));
+                " jump "+jumpRecord.getDescription(player));
         
         // Charge player
         if (!player.hasPermission("wormhole.free"))
@@ -309,7 +307,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         player.sendMessage(ChatColor.DARK_GREEN+"Deleted"+ChatColor.RESET+
-            " jump "+jumpRecord.getDescriptionForPlayer(player));
+            " jump "+jumpRecord.getDescription(player));
         
         // Charge player
         if (!player.hasPermission("wormhole.free"))
@@ -681,7 +679,7 @@ class WormholeCommandHandler implements CommandExecutor {
         player.sendMessage(String.format(
             "%sRenamed%s jump '%s' to %s",
             ChatColor.DARK_GREEN, ChatColor.RESET,
-            oldJumpName, jumpRecord.getDescriptionForPlayer(player)));
+            oldJumpName, jumpRecord.getDescription(player)));
         
         // Charge player
         if (!player.hasPermission("wormhole.free"))
@@ -700,33 +698,36 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
-        // Get jump from args
-        Jump jumpOld = getJumpInfoFromArgs(player, args);
-        if (jumpOld == null) {
-            // Display usage
+        // Get jump info from args
+        String[] jumpInfo = getJumpInfoFromArgs(player, args);
+        // Parse error?
+        if (jumpInfo == null) {
             player.sendMessage(usageReplace);
             return;
         }
-        Jump jumpNew = jumpOld.clone();
-        jumpNew.setDest(player.getLocation());
+        String playerName = jumpInfo[0];
+        String jumpName   = jumpInfo[1];
         
         // Check permissions
-        if (jumpOld.isPublic()) {
+        // Jump is public?
+        if (playerName == null) {
             if (!player.hasPermission("wormhole.replace.public")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot replace public Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot replace public jumps");
                 return;
             }
         }
-        else if (jumpOld.playerName.equals(player.getName())) {
+        // Jump belongs to the player?
+        else if (playerName.equalsIgnoreCase(player.getName())) {
             if (!player.hasPermission("wormhole.replace.private")) {
-                player.sendMessage(ChatColor.DARK_RED+"You cannot replace your Jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot replace your jumps");
                 return;
             }
         }
+        // Jump belongs to another player?
         else {
             if (!player.hasPermission("wormhole.replace.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot replace Jumps for other players");
+                    "You cannot replace jumps that belong to other players");
                 return;
             }
         }
@@ -734,41 +735,46 @@ class WormholeCommandHandler implements CommandExecutor {
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
                 && !econMgr.hasBalance(player, "replace")) {
-            player.sendMessage(ChatColor.DARK_RED+"You cannot afford to replace Jumps");
+            player.sendMessage(ChatColor.DARK_RED+"You cannot afford to replace jumps");
             return;
         }
         
-        // Execute command to replace old jump with new jump
-        int result = jumpMgr.updateJump(jumpOld, jumpNew);
-        
-        // Success
-        if (result == 0) {
-            player.sendMessage(ChatColor.DARK_GREEN+"Replaced"+ChatColor.RESET+
-                " Jump "+jumpNew.getDescriptionForPlayer(player));
-            
-            // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                econMgr.charge(player, "replace");
+        // Get the player record
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        // Player does not exist?
+        if (playerRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "Failed to replace jump; player '"+playerName+"' does not exist");
+            return;
         }
         
-        // Player does not exist
-        else if (result == 1)
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to replace Jump; player \"%s\" does not exist", jumpNew.playerName));
-        
-        // Jump does not exist
-        else if (result == 2)
-            player.sendMessage(String.format(ChatColor.DARK_RED+
-                "Failed to replace Jump; Jump %s does not exist",
-                jumpNew.getDescriptionForPlayer(player)));
-        
-        // Failure; unknown reason
-        else {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to replace Jump; unknown reason");
-            wormhole.getLogger().warning(String.format(
-                "Player \"%s\" failed to replace Jump %s; unknown reason",
-                player.getName(), jumpNew.getDescription()));
+        // Get the jump record
+        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        // Jump does not exist?
+        if (jumpRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to replace jump; jump '"+
+                    JumpRecord.getDescription(player, playerName, jumpName)+"' does not exist");
+            return;
         }
+        
+        // Set the location of the jump to the player's current location
+        jumpRecord.setLocation(player.getLocation());
+        
+        // Save jump record; failed?
+        if (!jumpRecord.save()) {
+            player.sendMessage(ChatColor.DARK_RED+"Failed to replace jump "+
+                    jumpRecord.getDescription(player)+"; internal error");
+            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to replace jump "+
+                    jumpRecord.getDescription()+"; failed to save jump record");
+            return;
+        }
+        
+        player.sendMessage(ChatColor.DARK_GREEN+"Replaced"+ChatColor.RESET+" jump "+
+            jumpRecord.getDescription(player));
+        
+        // Charge player
+        if (!player.hasPermission("wormhole.free"))
+            econMgr.charge(player, "replace");
     }
     
     /**
@@ -856,7 +862,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Success
         if (result == 0) {
             player.sendMessage(ChatColor.DARK_GREEN+"Set sign"+ChatColor.RESET+
-                " to Jump "+jump.getDescriptionForPlayer(player));
+                " to Jump "+jump.getDescription(player));
             // Charge player
             if (!player.hasPermission("wormhole.free"))
                 econMgr.charge(player, "set");
@@ -954,7 +960,7 @@ class WormholeCommandHandler implements CommandExecutor {
             player.sendMessage(String.format(
                 "%sUnset sign%s pointing to Jump %s",
                 ChatColor.DARK_GREEN, ChatColor.RESET,
-                jump.getDescriptionForPlayer(player)));
+                jump.getDescription(player)));
             // Charge player
             if (!player.hasPermission("wormhole.free"))
                 econMgr.charge(player, "unset");

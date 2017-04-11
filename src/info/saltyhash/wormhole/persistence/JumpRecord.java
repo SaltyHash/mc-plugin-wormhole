@@ -27,6 +27,10 @@ public class JumpRecord {
     
     public JumpRecord() {}
     
+    public JumpRecord(UUID playerUuid, String name, Location l) {
+        this(playerUuid, name, l.getWorld().getUID(), l.getX(), l.getY(), l.getZ(), l.getYaw());
+    }
+    
     public JumpRecord(UUID playerUuid, String name, UUID worldUuid,
                       double x, double y, double z, float yaw) {
         this.id = null;
@@ -34,18 +38,6 @@ public class JumpRecord {
         this.name       = name;
         this.worldUuid  = worldUuid;
         this.x = x; this.y = y; this.z = z; this.yaw = yaw;
-    }
-    
-    /** Creates a jump record using the player to fill in the fields. */
-    public JumpRecord(Player player, String name) {
-        this.id = null;
-        this.playerUuid = player.getUniqueId();
-        this.name       = name;
-    
-        Location l = player.getLocation();
-        this.worldUuid = l.getWorld().getUID();
-        this.x = l.getX(); this.y = l.getY(); this.z = l.getZ();
-        this.yaw = l.getYaw();
     }
     
     /** Constructs a jump record from a ResultSet containing all columns of the table. */
@@ -88,23 +80,30 @@ public class JumpRecord {
     
     /** Returns a general description of the jump. */
     public String getDescription() {
-        if (this.isPublic())
-            return "\""+name+"\" (Public)";
-        else
-            return "\""+name+"\" ("+getPlayerRecord().username+")";
+        return getDescription(null, getPlayerRecord().username, name);
     }
     
-    /** Return a description of the jump for the given player. */
-    public String getDescriptionForPlayer(Player player) {
-        // Public jump?
-        if (this.isPublic())
-            return "\""+name+"\" (Public)";
-        // Jump belongs to player?
-        else if (playerUuid.equals(player.getUniqueId()))
-            return "\""+name+"\"";
-        // Jump belongs to another player?
-        else
-            return "\""+name+"\" ("+getPlayerRecord().username+")";
+    /**
+     * Returns a description of the jump formatted for the given player.
+     * @param player Player for whom to format the description.
+     */
+    public String getDescription(Player player) {
+        return getDescription(player, getPlayerRecord().username, name);
+    }
+    
+    /**
+     * Returns the description of a jump with the given parameters formatted for the given player.
+     * @param player    Player for whom to format the description (may be null).
+     * @param ownerName Username of player who owns the jump (null if public).
+     * @param jumpName  Name of the jump.
+     */
+    public static String getDescription(Player player, String ownerName, String jumpName) {
+        // Jump belongs to the player?
+        if (player != null && player.getName().equalsIgnoreCase(ownerName))
+            return "'"+jumpName+"'";
+        
+        // Jump is public or belongs to another player?
+        return String.format("'%s' (%s)", jumpName, (ownerName != null ? ownerName : "public"));
     }
     
     /** Returns the jump location. */
@@ -120,23 +119,6 @@ public class JumpRecord {
     
     public boolean isPrivate() { return (playerUuid != null); }
     public boolean isPublic()  { return (playerUuid == null); }
-    
-    /** Sets the jump location. */
-    public void setLocation(Location l) {
-        worldUuid = l.getWorld().getUID();
-        x = l.getX(); y = l.getY(); z = l.getZ();
-        yaw = l.getYaw();
-    }
-    
-    /**
-     * Teleports the player to the jump location.
-     * @return true if teleport was successful.
-     */
-    public boolean teleportPlayer(Player player) {
-        Location l = getLocation();
-        l.getWorld().loadChunk((int)x, (int)z);
-        return player.teleport(l, PlayerTeleportEvent.TeleportCause.PLUGIN);
-    }
     
     /**
      * Gets the jump record with the given ID from the database.  Logs errors.
@@ -292,5 +274,22 @@ public class JumpRecord {
                 return false;
             }
         }
+    }
+    
+    /** Sets the jump location. */
+    public void setLocation(Location l) {
+        worldUuid = l.getWorld().getUID();
+        x = l.getX(); y = l.getY(); z = l.getZ();
+        yaw = l.getYaw();
+    }
+    
+    /**
+     * Teleports the player to the jump location.
+     * @return true if teleport was successful.
+     */
+    public boolean teleportPlayer(Player player) {
+        Location l = getLocation();
+        l.getWorld().loadChunk((int)x, (int)z);
+        return player.teleport(l, PlayerTeleportEvent.TeleportCause.PLUGIN);
     }
 }
