@@ -7,6 +7,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -119,9 +121,6 @@ public class JumpRecord {
     public boolean isPrivate() { return (playerUuid != null); }
     public boolean isPublic()  { return (playerUuid == null); }
     
-    /** Makes the jump public. */
-    public void makePublic() { playerUuid = null; }
-    
     /** Sets the jump location. */
     public void setLocation(Location l) {
         worldUuid = l.getWorld().getUID();
@@ -160,6 +159,40 @@ public class JumpRecord {
             return rs.next() ? new JumpRecord(rs) : null;
         } catch (SQLException e) {
             DBManager.logSevere("Failed to fetch jump record:\n"+e.toString());
+            return null;
+        }
+    }
+    
+    /**
+     * Returns list of all JumpRecords belonging to the player, in alphabetical order.  Logs errors.
+     * @param playerUuid UUID of the player to which the JumpRecords belong.
+     * @return List of all JumpRecords belonging to the player (may be empty), or null on error.
+     */
+    public static List<JumpRecord> load(UUID playerUuid) {
+        // Get database connection
+        Connection conn = DBManager.getConnection();
+        if (conn == null) return null;
+        
+        // Create select statement
+        final String sql = "SELECT * FROM jumps WHERE `player_uuid`=? ORDER BY `name`;";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            // Set statement parameters and execute
+            ps.setString(1, (playerUuid != null) ?
+                    playerUuid.toString() : SqlPublicUuid.toString());
+            ResultSet rs = ps.executeQuery();
+            
+            // Get number of results
+            rs.last();
+            int resultCount = rs.getRow()+1;
+            rs.beforeFirst();
+            
+            // Get JumpRecords from the result set and return
+            List<JumpRecord> jumpRecords = new ArrayList<>(resultCount);
+            while (rs.next())
+                jumpRecords.add(new JumpRecord(rs));
+            return jumpRecords;
+        } catch (SQLException e) {
+            DBManager.logSevere("Failed to fetch jump records:\n"+e.toString());
             return null;
         }
     }

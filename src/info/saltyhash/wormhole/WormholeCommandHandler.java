@@ -1,10 +1,12 @@
 package info.saltyhash.wormhole;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import info.saltyhash.wormhole.persistence.JumpRecord;
 import info.saltyhash.wormhole.persistence.PlayerRecord;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -410,10 +412,11 @@ class WormholeCommandHandler implements CommandExecutor {
             econMgr.charge(player, "jump");
     }
     
+    /**
+     * Handles the "wormhole list" command.
+     * Usage: /worm list [pub | player] [page]
+     */
     private void commandList(CommandSender sender, String[] args) {
-        /* Handles the "wormhole list" command.
-         * Usage: /worm list [pub | player] [page]
-         */
         String playerName;
         int page, pageSize = 10;
         
@@ -442,10 +445,10 @@ class WormholeCommandHandler implements CommandExecutor {
                     page = 1;
                     // Public jump list
                     if (args[0].equalsIgnoreCase("pub"))
-                        playerName = "";
+                        playerName = null;
                     // Player jump list
-                    else playerName =
-                        wormhole.getServer().getOfflinePlayer(args[0]).getName();
+                    else
+                        playerName = args[0];
                 }
             }
             
@@ -455,10 +458,10 @@ class WormholeCommandHandler implements CommandExecutor {
             else {
                 // Public jump list
                 if (args[0].equalsIgnoreCase("pub"))
-                    playerName = "";
+                    playerName = null;
                 // Player jump list
-                else playerName =
-                    wormhole.getServer().getOfflinePlayer(args[0]).getName();
+                else
+                    playerName = args[0];
                 page = Integer.parseInt(args[1]);
             }
         }
@@ -470,79 +473,96 @@ class WormholeCommandHandler implements CommandExecutor {
         if (page < 1) page = 1;
         
         // Check permissions
-        if (playerName.isEmpty()) {
+        // Public jump?
+        if (playerName == null) {
             if (!sender.hasPermission("wormhole.list.public")) {
-                sender.sendMessage(ChatColor.DARK_RED+"You cannot list public Jumps");
+                sender.sendMessage(ChatColor.DARK_RED+"You cannot list public jumps");
                 return;
             }
         }
+        // Jump belonging to the player?
         else if (playerName.equals(sender.getName())) {
             if (!sender.hasPermission("wormhole.list.private")) {
-                sender.sendMessage(ChatColor.DARK_RED+"You cannot list your Jumps");
+                sender.sendMessage(ChatColor.DARK_RED+"You cannot list your jumps");
                 return;
             }
         }
+        // Jump belonging to another player?
         else {
             if (!sender.hasPermission("wormhole.list.other")) {
                 sender.sendMessage(ChatColor.DARK_RED+
-                    "You cannot list other players' Jumps");
+                    "You cannot list jumps belonging to other players");
                 return;
             }
         }
         
-        // Get list of jump names
-        List<String> jumpNames = jumpMgr.getJumpNameList(playerName);
-        // Unknown error
-        if (jumpNames == null) {
-            sender.sendMessage(ChatColor.DARK_RED+"Failed to list Jumps; unknown reason");
-            wormhole.getLogger().warning(
-                String.format("%s failed to list Jumps for player \"%s\" for unknown reason",
-                    sender.getName(), playerName));
-            return;
-        }
-        // Player has no jumps
-        if (jumpNames.isEmpty()) {
-            sender.sendMessage(ChatColor.DARK_PURPLE+"No Jumps to list");
+        // Get the player record
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        // Player does not exist?
+        if (playerRecord == null) {
+            sender.sendMessage(ChatColor.DARK_RED+"Player '"+playerName+"' does not exist");
             return;
         }
         
+        // Get list of jump records
+        List<JumpRecord> jumpRecords = JumpRecord.load(playerRecord.uuid);
+        // Unknown error?
+        if (jumpRecords == null) {
+            sender.sendMessage(ChatColor.DARK_RED+"Failed to list jumps; unknown reason");
+            wormhole.getLogger().warning(sender.getName()+" failed to list jumps for player '"+
+                    playerName+"; unknown reason");
+            return;
+        }
+        
+        // Player has no jumps?
+        if (jumpRecords.isEmpty()) {
+            sender.sendMessage(ChatColor.DARK_PURPLE+"No jumps to list");
+            return;
+        }
+        
+        /*
+        // Make list of jump names
+        List<String> jumpNames = new ArrayList<>(jumpRecords.size());
+        for (JumpRecord jumpRecord : jumpRecords)
+            jumpNames.add(jumpRecord.name);
+        */
+        
         // Get number of pages
-        int pages = (jumpNames.size()/pageSize)+((jumpNames.size()%pageSize) != 0 ? 1 : 0);
+        int pages = (jumpRecords.size()/pageSize)+((jumpRecords.size()%pageSize) != 0 ? 1 : 0);
         if (page > pages) page = pages;
         
         // Make page list
         try {
             int start = (page-1)*pageSize;
             int end   = start+pageSize;
-            if (end > jumpNames.size()) end = jumpNames.size();
-            jumpNames = jumpNames.subList(start, end);
+            if (end > jumpRecords.size()) end = jumpRecords.size();
+            jumpRecords = jumpRecords.subList(start, end);
         }
-        // Page does not exist
+        // Page does not exist?
         catch (IllegalArgumentException e) {
-            sender.sendMessage(String.format(ChatColor.DARK_RED+
-                "Page %d does not exist", page));
+            sender.sendMessage(ChatColor.DARK_RED+"Page "+page+" does not exist");
             return;
         }
         
         // Display list
-        String msg = String.format(
-            "\n%sJumps%s for %s:  Page %s%d%s/%s%d%s",
-            ChatColor.DARK_PURPLE, ChatColor.RESET,
-            (playerName.isEmpty() ? "Public" : playerName),
-            ChatColor.DARK_AQUA, page, ChatColor.RESET,
-            ChatColor.DARK_AQUA, pages, ChatColor.RESET);
-        for (String jumpName : jumpNames) {
-            Jump jump = jumpMgr.getJump(playerName, jumpName);
-            if (jump == null) continue;
-            msg += String.format(ChatColor.RESET+
-                "\n- %s%s%s:  W:%s%s%s  X:%s%d%s  Y:%s%d%s  Z:%s%d%s",
-                ChatColor.DARK_PURPLE, jump.jumpName, ChatColor.RESET,
-                ChatColor.DARK_AQUA, jump.worldName, ChatColor.RESET,
-                ChatColor.DARK_AQUA, (int)jump.x, ChatColor.RESET,
-                ChatColor.DARK_AQUA, (int)jump.y, ChatColor.RESET,
-                ChatColor.DARK_AQUA, (int)jump.z, ChatColor.RESET);
+        StringBuilder msg = new StringBuilder(String.format(
+                "\n%sJumps%s for %s:  Page %s%d%s/%s%d%s",
+                ChatColor.DARK_PURPLE, ChatColor.RESET,
+                (playerName == null ? "Public" : playerName),
+                ChatColor.DARK_AQUA, page, ChatColor.RESET,
+                ChatColor.DARK_AQUA, pages, ChatColor.RESET));
+        for (JumpRecord jumpRecord : jumpRecords) {
+            if (jumpRecord == null) continue;
+            String worldName = Bukkit.getServer().getWorld(jumpRecord.worldUuid).getName();
+            msg.append(String.format(
+                    ChatColor.RESET+"\n- %s%s%s:  W:%s%s%s  X:%s%d%s  Y:%s%d%s  Z:%s%d%s",
+                    ChatColor.DARK_PURPLE,     jumpRecord.name, ChatColor.RESET,
+                    ChatColor.DARK_AQUA,       worldName,       ChatColor.RESET,
+                    ChatColor.DARK_AQUA, (int) jumpRecord.x,    ChatColor.RESET,
+                    ChatColor.DARK_AQUA, (int) jumpRecord.y,    ChatColor.RESET,
+                    ChatColor.DARK_AQUA, (int) jumpRecord.z,    ChatColor.RESET));
         }
-        sender.sendMessage(msg);
+        sender.sendMessage(msg.toString());
     }
     
     private void commandReload(CommandSender sender) {
