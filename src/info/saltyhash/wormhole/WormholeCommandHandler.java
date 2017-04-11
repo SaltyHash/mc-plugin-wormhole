@@ -3,12 +3,15 @@ package info.saltyhash.wormhole;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import info.saltyhash.wormhole.persistence.JumpRecord;
 import info.saltyhash.wormhole.persistence.PlayerRecord;
+import info.saltyhash.wormhole.persistence.SignRecord;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.command.Command;
@@ -25,18 +28,18 @@ class WormholeCommandHandler implements CommandExecutor {
     private final EconManager econMgr;
     
     // Command usage strings
-    private static final String usageAdd     = "/worm add [player | pub] <jump name>";
-    //private static final String usageBack    = "/worm back";
-    //private static final String usageCost    = "/worm cost";
-    private static final String usageDel     = "/worm del [player | pub] <jump name>";
-    private static final String usageJump    = "/worm jump [player | pub] <jump name>";
-    private static final String usageList    = "/worm list [player | pub] [page]";
-    //private static final String usageReload  = "/wormhole reload";
-    private static final String usageRename  = "/worm rename [player | pub] <old name> <new name>";
-    private static final String usageReplace = "/worm replace [player | pub] <jump name>";
-    private static final String usageSet     = "/worm set [player | pub] <jump name>";
-    //private static final String usageUnset   = "/worm unset";
-    //private static final String usageVersion = "/wormhole version";
+    private static final String USAGE_ADD     = "/worm add [player | pub] <jump name>";
+    //private static final String USAGE_BACK    = "/worm back";
+    //private static final String USAGE_COST    = "/worm cost";
+    private static final String USAGE_DEL     = "/worm del [player | pub] <jump name>";
+    private static final String USAGE_JUMP    = "/worm jump [player | pub] <jump name>";
+    private static final String USAGE_LIST    = "/worm list [player | pub] [page]";
+    //private static final String USAGE_RELOAD  = "/worm reload";
+    private static final String USAGE_RENAME  = "/worm rename [player | pub] <old name> <new name>";
+    private static final String USAGE_REPLACE = "/worm replace [player | pub] <jump name>";
+    private static final String USAGE_SET     = "/worm set [player | pub] <jump name>";
+    //private static final String USAGE_UNSET   = "/worm unset";
+    //private static final String USAGE_VERSION = "/worm version";
     
     WormholeCommandHandler(Wormhole wormhole, EconManager econMgr) {
         this.wormhole = wormhole;
@@ -60,7 +63,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Parse error?
         if (jumpInfo == null) {
             // Display usage
-            player.sendMessage(usageAdd);
+            player.sendMessage(USAGE_ADD);
             return;
         }
         String playerName = jumpInfo[0];
@@ -128,8 +131,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 " jump "+jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free"))
-            econMgr.charge(player, "add");
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "add");
     }
     
     /**
@@ -189,8 +191,7 @@ class WormholeCommandHandler implements CommandExecutor {
         PlayerManager.setPreviousLocation(player, newPreviousLocation);
     
         // Charge player
-        if (!player.hasPermission("wormhole.free"))
-            econMgr.charge(player, "back");
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "back");
     }
     
     /**
@@ -245,7 +246,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(usageDel);
+            player.sendMessage(USAGE_DEL);
             return;
         }
         String playerName = jumpInfo[0];
@@ -310,8 +311,7 @@ class WormholeCommandHandler implements CommandExecutor {
             " jump "+jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free"))
-            econMgr.charge(player, "del");
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "del");
     }
     
     /**
@@ -330,7 +330,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(usageJump);
+            player.sendMessage(USAGE_JUMP);
             return;
         }
         String playerName = jumpInfo[0];
@@ -405,8 +405,7 @@ class WormholeCommandHandler implements CommandExecutor {
         wormhole.playTeleportEffect(player.getLocation());
     
         // Charge player
-        if (!player.hasPermission("wormhole.free"))
-            econMgr.charge(player, "jump");
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "jump");
     }
     
     /**
@@ -464,7 +463,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
             // Display command usage
-            sender.sendMessage(usageList);
+            sender.sendMessage(USAGE_LIST);
             return;
         }
         if (page < 1) page = 1;
@@ -590,11 +589,11 @@ class WormholeCommandHandler implements CommandExecutor {
             args = Arrays.copyOfRange(args, 0, args.length-1);
         }
         catch (ArrayIndexOutOfBoundsException e) {
-            player.sendMessage(usageRename);
+            player.sendMessage(USAGE_RENAME);
             return;
         }
         if (newJumpName == null) {
-            player.sendMessage(usageRename);
+            player.sendMessage(USAGE_RENAME);
             return;
         }
         
@@ -602,7 +601,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(usageRename);
+            player.sendMessage(USAGE_RENAME);
             return;
         }
         String playerName  = jumpInfo[0];
@@ -682,8 +681,7 @@ class WormholeCommandHandler implements CommandExecutor {
             oldJumpName, jumpRecord.getDescription(player)));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free"))
-            econMgr.charge(player, "rename");
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "rename");
     }
     
     /**
@@ -702,7 +700,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(usageReplace);
+            player.sendMessage(USAGE_REPLACE);
             return;
         }
         String playerName = jumpInfo[0];
@@ -773,8 +771,7 @@ class WormholeCommandHandler implements CommandExecutor {
             jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free"))
-            econMgr.charge(player, "replace");
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "replace");
     }
     
     /**
@@ -782,44 +779,41 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm set [player | pub] <jump name>
      */
     private void commandSet(CommandSender sender, String[] args) {
+        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to set sign; ";
+        
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
             return;
         }
         Player player = (Player)sender;
-        
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "set")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to set signs to jumps");
+    
+        // Get jump info from args
+        String[] jumpInfo = getJumpInfoFromArgs(player, args);
+        // Parse error?
+        if (jumpInfo == null) {
+            player.sendMessage(USAGE_SET);
             return;
         }
-        
-        // Get jump from args
-        Jump jumpArg = getJumpInfoFromArgs(player, args);
-        if (jumpArg == null) {
-            // Display usage
-            player.sendMessage(usageSet);
-            return;
-        }
+        String playerName = jumpInfo[0];
+        String jumpName   = jumpInfo[1];
         
         // Check permissions
-        if (jumpArg.isPublic()) {
+        // Jump is public?
+        if (playerName == null) {
             if (!player.hasPermission("wormhole.set.public")) {
-                player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot set signs to public jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot set signs to public jumps");
                 return;
             }
         }
-        else if (jumpArg.playerName.equals(player.getName())) {
+        // Jump belongs to the player?
+        else if (playerName.equalsIgnoreCase(player.getName())) {
             if (!player.hasPermission("wormhole.set.private")) {
-                player.sendMessage(ChatColor.DARK_RED+
-                    "You cannot set signs to your jumps");
+                player.sendMessage(ChatColor.DARK_RED+"You cannot set signs to your jumps");
                 return;
             }
         }
+        // Jump belongs to other player?
         else {
             if (!player.hasPermission("wormhole.set.other")) {
                 player.sendMessage(ChatColor.DARK_RED+
@@ -827,62 +821,68 @@ class WormholeCommandHandler implements CommandExecutor {
                 return;
             }
         }
-        
-        // Get actual jump
-        Jump jump = jumpMgr.getJump(jumpArg.playerName, jumpArg.jumpName);
-        if (jump == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "Failed to set sign; jump does not exist");
-            // Tell player if a public jump with the same name exists
-            if (jumpArg.isPrivate() && player.hasPermission("wormhole.list.public")
-                    && jumpMgr.getJump("", jumpArg.jumpName) != null)
-                player.sendMessage("Did you mean \"pub "+jumpArg.jumpName+"\"?");
+    
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free")
+                && !econMgr.hasBalance(player, "set")) {
+            player.sendMessage(ChatColor.DARK_RED+"You cannot afford to set signs to jumps");
             return;
         }
         
+        // Get the player record
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        // Player does not exist?
+        if (playerRecord == null) {
+            player.sendMessage(ERROR_MSG_PREFIX+"player '"+playerName+"' does not exist");
+            return;
+        }
+        
+        // Get the jump record
+        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        // Jump does nt exist?
+        if (jumpRecord == null) {
+            player.sendMessage(ERROR_MSG_PREFIX+"jump "+
+                    JumpRecord.getDescription(player, playerName, jumpName)+" does not exist");
+            return;
+        }
+    
         // Get sign block
-        //Block target = player.getTargetBlock(null, 5);
-        Block target = null;
+        Block target = player.getTargetBlock((Set<Material>) null, 5);
+        // TODO: Get rid of this
+        /*Block target = null;
         BlockIterator bit = new BlockIterator(player, 5);
         while (bit.hasNext()) {
             target = bit.next();
             if (target.getState() instanceof Sign) break;
             else target = null;
-        }
-        if (target == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "Failed to set sign; you must be looking at a sign");
+        }*/
+        if (target == null || !(target.getState() instanceof Sign)) {
+            player.sendMessage(ERROR_MSG_PREFIX+"you must be looking at a sign");
             return;
         }
-        Sign sign = (Sign)target.getState();
+        Sign sign = (Sign) target.getState();
         
-        // Set sign jump destination
-        int result = signMgr.addSignJump(sign, jump);
-        
-        // Success
-        if (result == 0) {
-            player.sendMessage(ChatColor.DARK_GREEN+"Set sign"+ChatColor.RESET+
-                " to jump "+jump.getDescription(player));
-            // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                econMgr.charge(player, "set");
+        // Sign is already pointing to a jump?
+        if (SignRecord.load(sign) != null) {
+            player.sendMessage(ERROR_MSG_PREFIX+"sign is already set");
+            return;
         }
         
-        // Sign already set
-        else if (result == 1)
-            player.sendMessage(ChatColor.DARK_RED+
-                "Failed to set sign; sign already set");
-        
-        // Unknown failure
-        else {
-            player.sendMessage(ChatColor.DARK_RED+
-                "Failed to set sign; unknown reason");
-            wormhole.getLogger().warning(String.format(
-                "Player \"%s\" failed to set sign (%s, %d, %d, %d) "+
-                "to jump %s; unknown reason",
-                player.getName(), sign.getWorld().getName(), sign.getX(),
-                sign.getY(), sign.getZ(), jump.getDescription()));
+        // Create new sign record
+        SignRecord signRecord = new SignRecord(sign, jumpRecord.id);
+        // Save sign record; failed?
+        if (!signRecord.save()) {
+            player.sendMessage(ERROR_MSG_PREFIX+"internal error");
+            wormhole.getLogger().warning("Player '"+player.getName()+
+                    "' failed to save sign record");
+            return;
         }
+        
+        player.sendMessage(ChatColor.DARK_GREEN+"Set sign"+ChatColor.RESET+
+            " to jump "+jumpRecord.getDescription(player));
+        
+        // Charge player
+        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "set");
     }
     
     /**
@@ -962,8 +962,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 ChatColor.DARK_GREEN, ChatColor.RESET,
                 jump.getDescription(player)));
             // Charge player
-            if (!player.hasPermission("wormhole.free"))
-                econMgr.charge(player, "unset");
+            if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "unset");
         }
         
         // Sign not set
