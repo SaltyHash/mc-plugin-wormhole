@@ -26,17 +26,17 @@ class WormholeCommandHandler implements CommandExecutor {
     private final EconManager econMgr;
     
     // Command usage strings
-    private static final String USAGE_ADD     = "/worm add [player | pub] <jump name>";
+    private static final String USAGE_ADD     = "/worm add [player | public] <jump name>";
     //private static final String USAGE_BACK    = "/worm back";
     //private static final String USAGE_COST    = "/worm cost";
-    private static final String USAGE_DEL     = "/worm del [player | pub] <jump name>";
-    private static final String USAGE_JUMP    = "/worm jump [player | pub] <jump name>";
-    private static final String USAGE_LIST    = "/worm list [player | pub] [page]";
+    private static final String USAGE_DEL     = "/worm del [player | public] <jump name>";
+    private static final String USAGE_JUMP    = "/worm jump [player | public] <jump name>";
+    private static final String USAGE_LIST    = "/worm list [player | public] [page]";
     //private static final String USAGE_RELOAD  = "/worm reload";
-    private static final String USAGE_RENAME  = "/worm rename [player | pub] <old name> <new name>";
-    private static final String USAGE_REPLACE = "/worm replace [player | pub] <jump name>";
-    private static final String USAGE_SEARCH  = "/worm search [player | pub] <jump name>";
-    private static final String USAGE_SET     = "/worm set [player | pub] <jump name>";
+    private static final String USAGE_RENAME  = "/worm rename [player | public] <old name> <new name>";
+    private static final String USAGE_REPLACE = "/worm replace [player | public] <jump name>";
+    private static final String USAGE_SEARCH  = "/worm search [player | public] <jump name>";
+    private static final String USAGE_SET     = "/worm set [player | public] <jump name>";
     //private static final String USAGE_UNSET   = "/worm unset";
     //private static final String USAGE_VERSION = "/worm version";
     
@@ -47,7 +47,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "add" command.
-     * Usage: /worm add [pub | player] <jump name>
+     * Usage: /worm add [player | public] <jump name>
      */
     private void commandAdd(CommandSender sender, String[] args) {
         final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to add jump; ";
@@ -230,7 +230,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "delete" command.
-     * Usage: /worm delete [player| pub] <jump name>
+     * Usage: /worm delete [player | public] <jump name>
      */
     private void commandDelete(CommandSender sender, String[] args) {
         // Make sure sender is a player
@@ -314,7 +314,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "jump" command.
-     * Usage: /worm jump [player | pub] <jump name>
+     * Usage: /worm jump [player | public] <jump name>
      */
     private void commandJump(CommandSender sender, String[] args) {
         // Make sure sender is a player
@@ -385,7 +385,7 @@ class WormholeCommandHandler implements CommandExecutor {
             
             // A public jump exists with the same name?  Notify the player.
             if (JumpRecord.load(PlayerRecord.PUBLIC_UUID, jumpName) != null)
-                player.sendMessage("Did you mean \"pub "+jumpName+"\"?");
+                player.sendMessage("Did you mean \"public "+jumpName+"\"?");
             return;
         }
         
@@ -412,7 +412,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "list" command.
-     * Usage: /worm list [pub | player] [page]
+     * Usage: /worm list [player | public] [page]
      */
     private void commandList(CommandSender sender, String[] args) {
         String playerName;
@@ -421,7 +421,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Parse arguments
         try {
             // First arg should be empty to imply first page,
-            // "pub", a player name, or a page number.
+            // "public", a player name, or a page number.
             
             // No args
             // Sender's jump list and page 1 implied
@@ -431,7 +431,7 @@ class WormholeCommandHandler implements CommandExecutor {
             }
             
             // 1 arg
-            // 1st arg alone either "pub", player name, or page number
+            // 1st arg alone either "public", player name, or page number
             else if (args.length == 1) {
                 // Get page from 1st arg.  Sender jump list implied.
                 try {
@@ -442,7 +442,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 catch (NumberFormatException e) {
                     page = 1;
                     // Public jump list
-                    if (args[0].equalsIgnoreCase("pub"))
+                    if (args[0].equalsIgnoreCase("public"))
                         playerName = null;
                     // Player jump list
                     else
@@ -451,11 +451,11 @@ class WormholeCommandHandler implements CommandExecutor {
             }
             
             // >=2 args
-            // 1st arg is either "pub" or player name
+            // 1st arg is either "public" or player name
             // 2nd arg is page number
             else {
                 // Public jump list
-                if (args[0].equalsIgnoreCase("pub"))
+                if (args[0].equalsIgnoreCase("public"))
                     playerName = null;
                 // Player jump list
                 else
@@ -577,7 +577,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "rename" command.
-     * Usage:  /worm rename [player | pub] <old name> <new name>
+     * Usage:  /worm rename [player | public] <old name> <new name>
      */
     private void commandRename(CommandSender sender, String[] args) {
         // Make sure sender is a player
@@ -693,7 +693,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "replace" command.
-     * Usage:  /worm replace [player | pub] <jump name>
+     * Usage:  /worm replace [player | public] <jump name>
      */
     private void commandReplace(CommandSender sender, String[] args) {
         // Make sure sender is a player
@@ -783,7 +783,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "search" command.
-     * Usage:  /worm search [player | pub] <jump name>
+     * Usage:  /worm search [player | public] <jump name>
      */
     private void commandSearch(CommandSender sender, String[] args) {
         final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to search for jump; ";
@@ -874,7 +874,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /**
      * Handles the "set" command.
-     * Usage:  /worm set [player | pub] <jump name>
+     * Usage:  /worm set [player | public] <jump name>
      */
     private void commandSet(CommandSender sender, String[] args) {
         final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to set sign; ";
@@ -1109,7 +1109,7 @@ class WormholeCommandHandler implements CommandExecutor {
     /**
      * Parses arguments and returns an array containing 0) the player name
      * and 1) the jump name, or null on parse error.
-     * Format: [player | pub] <jump name>
+     * Format: [player | public] <jump name>
      */
     private String[] getJumpInfoFromArgs(Player player, String[] args) {
         String playerName;
@@ -1127,7 +1127,7 @@ class WormholeCommandHandler implements CommandExecutor {
             }
             
             // Public jump
-            else if (args[0].equalsIgnoreCase("pub")) {
+            else if (args[0].equalsIgnoreCase("public")) {
                 // Check args
                 if (args[1].isEmpty()) return null;
                 // Player name empty to designate public jump, and jump name in 1st arg
