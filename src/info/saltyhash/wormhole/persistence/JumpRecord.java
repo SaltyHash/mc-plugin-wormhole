@@ -11,10 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Represents a row in the database table 'jumps'.
- * Setting playerUuid to null makes the jump public.
- */
+/** Represents a row in the database table 'jumps'. */
 public class JumpRecord {
     public Integer id;          // Primary key
     public UUID    playerUuid;  // Foreign key to players.uuid. Unique with name.
@@ -22,8 +19,6 @@ public class JumpRecord {
     public UUID    worldUuid;
     public double  x, y, z;
     public float   yaw;
-    
-    private static final UUID SqlPublicUuid = new UUID(0, 0);
     
     public JumpRecord() {}
     
@@ -50,6 +45,11 @@ public class JumpRecord {
         this.y          = rs.getDouble("y");
         this.z          = rs.getDouble("z");
         this.yaw        = rs.getFloat("yaw");
+    }
+    
+    /** Returns true if the jump belongs to the player. */
+    public boolean belongsTo(Player player) {
+        return (player.getUniqueId().equals(playerUuid));
     }
     
     /**
@@ -117,8 +117,9 @@ public class JumpRecord {
         return PlayerRecord.load(playerUuid);
     }
     
-    public boolean isPrivate() { return (playerUuid != null); }
-    public boolean isPublic()  { return (playerUuid == null); }
+    public boolean isPublic() {
+        return (playerUuid.equals(PlayerRecord.PUBLIC_UUID));
+    }
     
     /**
      * Gets the jump record with the given ID from the database.  Logs errors.
@@ -147,7 +148,7 @@ public class JumpRecord {
     
     /**
      * Returns list of all JumpRecords belonging to the player, in alphabetical order.  Logs errors.
-     * @param playerUuid UUID of the player to which the JumpRecords belong.
+     * @param  playerUuid UUID of the player to which the JumpRecords belong.
      * @return List of all JumpRecords belonging to the player (may be empty), or null on error.
      */
     public static List<JumpRecord> load(UUID playerUuid) {
@@ -159,8 +160,7 @@ public class JumpRecord {
         final String sql = "SELECT * FROM jumps WHERE `player_uuid`=? ORDER BY `name`;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, (playerUuid != null) ?
-                    playerUuid.toString() : SqlPublicUuid.toString());
+            ps.setString(1, playerUuid.toString());
             ResultSet rs = ps.executeQuery();
             
             // Get JumpRecords from the result set and return
@@ -189,8 +189,7 @@ public class JumpRecord {
         final String sql = "SELECT * FROM jumps WHERE `player_uuid`=? AND `name`=? LIMIT 1;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, (playerUuid != null) ?
-                    playerUuid.toString() : SqlPublicUuid.toString());
+            ps.setString(1, playerUuid.toString());
             ps.setString(2, name);
             ResultSet rs = ps.executeQuery();
             
@@ -198,6 +197,39 @@ public class JumpRecord {
             return rs.next() ? new JumpRecord(rs) : null;
         } catch (SQLException e) {
             DBManager.logSevere("Failed to fetch jump record:\n"+e.toString());
+            return null;
+        }
+    }
+    
+    /**
+     * Gets a list of jump records belonging to the player where the jump name is "like"
+     * the name given (as in SQL LIKE '%name%'), ordered alphabetically; useful for search.
+     * Logs errors.
+     * @param  playerUuid UUID of the player to which the jump record belongs.
+     * @param  name Jump name to search for.
+     * @return List of all JumpRecords belonging to the player and matching name, or null on error.
+     */
+    public static List<JumpRecord> loadLikeName(UUID playerUuid, String name) {
+        // Get database connection
+        Connection conn = DBManager.getConnection();
+        if (conn == null) return null;
+        
+        // Create select statement
+        final String sql = "SELECT * FROM jumps "+
+                "WHERE `player_uuid`=? AND `name` LIKE '%?%' ORDER BY `name`;";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            // Set statement parameters and execute
+            ps.setString(1, playerUuid.toString());
+            ps.setString(2, name);
+            ResultSet rs = ps.executeQuery();
+            
+            // Get JumpRecords from the result set and return
+            List<JumpRecord> jumpRecords = new ArrayList<>();
+            while (rs.next())
+                jumpRecords.add(new JumpRecord(rs));
+            return jumpRecords;
+        } catch (SQLException e) {
+            DBManager.logSevere("Failed to fetch jump records:\n"+e.toString());
             return null;
         }
     }
@@ -244,7 +276,7 @@ public class JumpRecord {
             try (PreparedStatement ps = conn.prepareStatement(
                     insertSql, Statement.RETURN_GENERATED_KEYS)) {
                 // Set parameters
-                ps.setObject(1, (playerUuid != null ) ? playerUuid.toString() : null, Types.CHAR);
+                ps.setString(1, playerUuid.toString());
                 ps.setString(2, name);
                 ps.setString(3, worldUuid.toString());
                 ps.setDouble(4, x);

@@ -18,7 +18,7 @@ class EconManager {
         // Set up economy integration
         // Vault not found
         if (wormhole.getServer().getPluginManager().getPlugin("Vault") == null)
-            wormhole.getLogger().warning(
+            wormhole.getLogger().info(
                 "Economy integration disabled; dependency \"Vault\" not found");
         // Vault found
         else {
@@ -26,14 +26,13 @@ class EconManager {
                 wormhole.getServer().getServicesManager().getRegistration(Economy.class);
             // No economy plugin found
             if (rsp == null)
-                wormhole.getLogger().warning(
+                wormhole.getLogger().info(
                     "Economy integration disabled; economy plugin not found");
             // Economy plugin found
             else {
                 this.econ = rsp.getProvider();
                 if (this.econ == null)
-                    wormhole.getLogger().warning(
-                        "Economy integration disabled; unknown reason");
+                    wormhole.getLogger().warning("Economy integration disabled; unknown reason");
             }
         }
     }

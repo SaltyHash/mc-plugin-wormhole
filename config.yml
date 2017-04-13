@@ -12,7 +12,8 @@ cost:
   unset:   0.0
   use:     0.0
 
+# Teleportation effects
 effects:
-  ring: false
+  ring:  false
   smoke: true
   sound: true

@@ -41,14 +41,6 @@ class WormholeEventHandler implements Listener {
         // Cancel interact event
         event.setCancelled(true);
         
-        // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "use")) {
-            player.sendMessage(ChatColor.DARK_RED+
-                "You cannot afford to use signs pointing to jumps");
-            return;
-        }
-        
         // Check permissions
         if (jump.isPublic()) {
             if (!player.hasPermission("wormhole.use.public")) {
@@ -57,7 +49,7 @@ class WormholeEventHandler implements Listener {
                 return;
             }
         }
-        else if (jump.getPlayerRecord().username.equals(player.getName())) {
+        else if (jump.belongsTo(player)) {
             if (!player.hasPermission("wormhole.use.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot use signs pointing to your jumps");
@@ -70,6 +62,13 @@ class WormholeEventHandler implements Listener {
                     "You cannot use signs pointing to jumps that belong to other players");
                 return;
             }
+        }
+        
+        // Make sure player can afford this action
+        if (!player.hasPermission("wormhole.free") && !econMgr.hasBalance(player, "use")) {
+            player.sendMessage(ChatColor.DARK_RED+
+                    "You cannot afford to use signs pointing to jumps");
+            return;
         }
         
         // Get player's start location
@@ -134,7 +133,7 @@ class WormholeEventHandler implements Listener {
                 return;
             }
         }
-        else if (jump.getPlayerRecord().username.equals(player.getName())) {
+        else if (jump.belongsTo(player)) {
             if (!player.hasPermission("wormhole.unset.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot unset signs pointing to your jumps");
@@ -189,10 +188,15 @@ class WormholeEventHandler implements Listener {
         
         // Check permissions
         Player player = event.getPlayer();
-        if (jumpRecord.isPublic() && !player.hasPermission("wormhole.use.public")) return;
-        else if (jumpRecord.getPlayerRecord().username.equals(player.getName())
-                && !player.hasPermission("wormhole.use.private")) return;
-        else if (!player.hasPermission("wormhole.use.other")) return;
+        if (jumpRecord.isPublic()) {
+            if (!player.hasPermission("wormhole.use.public")) return;
+        }
+        else if (jumpRecord.belongsTo(player)) {
+            if (!player.hasPermission("wormhole.use.private")) return;
+        }
+        else {
+            if (!player.hasPermission("wormhole.use.other")) return;
+        }
         
         // Display jump
         player.sendMessage(String.format("%sSign is set%s to jump %s",

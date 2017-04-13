@@ -27,7 +27,14 @@ public class Wormhole extends JavaPlugin {
             disable();
             return;
         }
-    
+        
+        // Save public player record
+        PlayerRecord publicPlayerRecord = new PlayerRecord(PlayerRecord.PUBLIC_UUID, null);
+        if (!publicPlayerRecord.save()) {
+            getLogger().severe("Failed to save public player record to the database");
+            disable();
+            return;
+        }
         // Save logged in players to the database
         for (Player player : getServer().getOnlinePlayers()) {
             PlayerRecord pr = new PlayerRecord(player);
