@@ -229,10 +229,10 @@ class WormholeCommandHandler implements CommandExecutor {
     }
     
     /**
-     * Handles the "del" command.
-     * Usage: /worm del [player| pub] <jump name>
+     * Handles the "delete" command.
+     * Usage: /worm delete [player| pub] <jump name>
      */
-    private void commandDel(CommandSender sender, String[] args) {
+    private void commandDelete(CommandSender sender, String[] args) {
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -1178,7 +1178,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 case "add"    : commandAdd(sender, args);     break;
                 case "back"   : commandBack(sender);          break;
                 case "cost"   : commandCost(sender);          break;
-                case "del"    : commandDel(sender, args);     break;
+                case "delete" : commandDelete(sender, args);  break;
                 case "jump"   : commandJump(sender, args);    break;
                 case "list"   : commandList(sender, args);    break;
                 case "reload" : commandReload(sender);        break;
