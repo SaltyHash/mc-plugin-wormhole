@@ -216,11 +216,11 @@ public class JumpRecord {
         
         // Create select statement
         final String sql = "SELECT * FROM jumps "+
-                "WHERE `player_uuid`=? AND `name` LIKE '%?%' ORDER BY `name`;";
+                "WHERE `player_uuid`=? AND `name` LIKE ? ORDER BY `name`;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
             ps.setString(1, playerUuid.toString());
-            ps.setString(2, name);
+            ps.setString(2, "%"+name+"%");
             ResultSet rs = ps.executeQuery();
             
             // Get JumpRecords from the result set and return

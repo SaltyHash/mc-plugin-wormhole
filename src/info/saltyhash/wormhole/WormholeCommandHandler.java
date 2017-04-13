@@ -7,7 +7,6 @@ import java.util.Set;
 import info.saltyhash.wormhole.persistence.JumpRecord;
 import info.saltyhash.wormhole.persistence.PlayerRecord;
 import info.saltyhash.wormhole.persistence.SignRecord;
-import net.milkbowl.vault.chat.Chat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -36,6 +35,7 @@ class WormholeCommandHandler implements CommandExecutor {
     //private static final String USAGE_RELOAD  = "/worm reload";
     private static final String USAGE_RENAME  = "/worm rename [player | pub] <old name> <new name>";
     private static final String USAGE_REPLACE = "/worm replace [player | pub] <jump name>";
+    private static final String USAGE_SEARCH  = "/worm search [player | pub] <jump name>";
     private static final String USAGE_SET     = "/worm set [player | pub] <jump name>";
     //private static final String USAGE_UNSET   = "/worm unset";
     //private static final String USAGE_VERSION = "/worm version";
@@ -794,8 +794,82 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         Player player = (Player)sender;
+        // Get jump info from args
+        String[] jumpInfo = getJumpInfoFromArgs(player, args);
+        // Parse error?
+        if (jumpInfo == null) {
+            player.sendMessage(USAGE_SEARCH);
+            return;
+        }
+        String playerName = jumpInfo[0];
+        String jumpName   = jumpInfo[1];
         
+        // Check permissions
+        // Jump is public?
+        if (playerName == null) {
+            if (!player.hasPermission("wormhole.list.public")) {
+                player.sendMessage(ChatColor.DARK_RED+"You cannot search public jumps");
+                return;
+            }
+        }
+        // Jump belongs to the player?
+        else if (playerName.equalsIgnoreCase(player.getName())) {
+            if (!player.hasPermission("wormhole.list.private")) {
+                player.sendMessage(ChatColor.DARK_RED+"You cannot search your jumps");
+                return;
+            }
+        }
+        // Jump belongs to other player?
+        else {
+            if (!player.hasPermission("wormhole.list.other")) {
+                player.sendMessage(ChatColor.DARK_RED+
+                        "You cannot search jumps that belong to other players");
+                return;
+            }
+        }
         
+        // Get the player record
+        PlayerRecord playerRecord = PlayerRecord.load(playerName);
+        // Player does not exist?
+        if (playerRecord == null) {
+            player.sendMessage(ChatColor.DARK_RED+"Player '"+playerName+"' does not exist");
+            return;
+        }
+        
+        // Get list of jump records
+        List<JumpRecord> jumpRecords = JumpRecord.loadLikeName(playerRecord.uuid, jumpName);
+        // Unknown error?
+        if (jumpRecords == null) {
+            player.sendMessage(ERROR_MSG_PREFIX+"internal error");
+            wormhole.getLogger().warning(sender.getName()+" failed to search jumps for player '"+
+                    playerName+"; unknown reason");
+            return;
+        }
+        
+        // Search results empty?
+        if (jumpRecords.isEmpty()) {
+            player.sendMessage(ChatColor.DARK_PURPLE+"No jumps match your search"+ChatColor.RESET+
+                    " for "+JumpRecord.getDescription(player, playerName, jumpName));
+            return;
+        }
+    
+        // Display search results
+        StringBuilder msg = new StringBuilder(String.format(
+                "%sSearch Results%s for %s:",
+                ChatColor.DARK_PURPLE, ChatColor.RESET,
+                JumpRecord.getDescription(player, playerName, jumpName)));
+        for (JumpRecord jumpRecord : jumpRecords) {
+            if (jumpRecord == null) continue;
+            String worldName = Bukkit.getServer().getWorld(jumpRecord.worldUuid).getName();
+            msg.append(String.format(
+                    ChatColor.RESET+"\n- %s%s%s:  W:%s%s%s  X:%s%d%s  Y:%s%d%s  Z:%s%d%s",
+                    ChatColor.DARK_PURPLE,     jumpRecord.name, ChatColor.RESET,
+                    ChatColor.DARK_AQUA,       worldName,       ChatColor.RESET,
+                    ChatColor.DARK_AQUA, (int) jumpRecord.x,    ChatColor.RESET,
+                    ChatColor.DARK_AQUA, (int) jumpRecord.y,    ChatColor.RESET,
+                    ChatColor.DARK_AQUA, (int) jumpRecord.z,    ChatColor.RESET));
+        }
+        sender.sendMessage(msg.toString());
     }
     
     /**
@@ -1110,6 +1184,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 case "reload" : commandReload(sender);        break;
                 case "rename" : commandRename(sender, args);  break;
                 case "replace": commandReplace(sender, args); break;
+                case "search" : commandSearch(sender, args);  break;
                 case "set"    : commandSet(sender, args);     break;
                 case "unset"  : commandUnset(sender);         break;
                 case "version": commandVersion(sender);       break;
