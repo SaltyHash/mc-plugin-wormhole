@@ -218,6 +218,8 @@ public final class DBManager {
             return false;
         }
         
+        // TODO: Import data from pre-1.4.0 database
+        
         logInfo("Done.");
         return true;
     }
