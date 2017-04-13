@@ -1,6 +1,5 @@
 package info.saltyhash.wormhole;
 
-import info.saltyhash.wormhole.persistence.JumpRecord;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;

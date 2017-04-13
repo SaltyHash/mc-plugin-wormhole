@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /** Represents a row in the database table 'jumps'. */
+@SuppressWarnings("WeakerAccess")
 public class JumpRecord {
     public Integer id;          // Primary key
     public UUID    playerUuid;  // Foreign key to players.uuid. Unique with name.

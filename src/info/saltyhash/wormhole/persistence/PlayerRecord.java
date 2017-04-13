@@ -7,6 +7,7 @@ import java.sql.*;
 import java.util.UUID;
 
 /** Represents a row in the database table 'player'. */
+@SuppressWarnings("WeakerAccess")
 public class PlayerRecord {
     public UUID   uuid;         // Primary key
     public String username;
@@ -33,6 +34,7 @@ public class PlayerRecord {
      * WARNING: This will delete all jumps and signs associated with the player!
      * @return true on success (even if record DNE); false on SQL error.
      */
+    @SuppressWarnings("unused")
     public boolean delete() {
         // Get database connection
         Connection conn = DBManager.getConnection();
@@ -52,6 +54,7 @@ public class PlayerRecord {
     }
     
     /** Returns the player corresponding to this record, or null if they are not logged in. */
+    @SuppressWarnings("unused")
     public Player getPlayer() { return Bukkit.getServer().getPlayer(uuid); }
     
     /** Returns true if the player UUID matches the player record UUID. */

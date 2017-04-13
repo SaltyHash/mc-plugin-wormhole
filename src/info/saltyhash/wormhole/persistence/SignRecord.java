@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 /** Represents a row in the database table 'signs'. */
+@SuppressWarnings("WeakerAccess")
 public class SignRecord {
     public UUID worldUuid;  // Primary key
     public int  x;          // Primary key

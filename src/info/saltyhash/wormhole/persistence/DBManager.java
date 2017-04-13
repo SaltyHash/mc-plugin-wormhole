@@ -5,13 +5,15 @@ import java.sql.*;
 import java.util.logging.Logger;
 
 /** Manages the database. */
+@SuppressWarnings({"WeakerAccess", "SameParameterValue"})
 public final class DBManager {
     private static Connection connection;
     private static File dbFile;
-    public  static Logger logger;
+    private static Logger logger;
     
     private DBManager() {}
     
+    @SuppressWarnings("unused")
     public static void setup(File dbFile) {
         DBManager.setup(dbFile, null);
     }
@@ -61,6 +63,7 @@ public final class DBManager {
      * and the connection is closed.  Logs errors.
      * @return true on success; false on error.
      */
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean closeConnection() {
         boolean success = true;
         if (connection != null) {

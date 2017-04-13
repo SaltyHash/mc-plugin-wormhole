@@ -8,6 +8,7 @@ import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 
 /** Economy manager for Wormhole. */
+@SuppressWarnings("WeakerAccess")
 class EconManager {
     private final Wormhole wormhole;
     Economy econ = null;
@@ -42,6 +43,7 @@ class EconManager {
      * @param action add, back, del, jump, rename, replace, set, unset, use.
      * @return 0: Success; 1: Insufficient funds; 2: Failed to create account; 3: No economy support.
      */
+    @SuppressWarnings("UnusedReturnValue")
     int charge(Player player, String action) {
         action = action.toLowerCase();
         FileConfiguration config = this.wormhole.getConfig();
