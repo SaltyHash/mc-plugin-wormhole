@@ -852,7 +852,7 @@ class WormholeCommandHandler implements CommandExecutor {
                     " for "+JumpRecord.getDescription(player, playerName, jumpName));
             return;
         }
-    
+        
         // Display search results
         StringBuilder msg = new StringBuilder(String.format(
                 "%sSearch Results%s for %s:",
