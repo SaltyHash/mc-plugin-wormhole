@@ -7,7 +7,7 @@ commands:
   wormhole:
     description: Display all Wormhole commands
     aliases: [worm]
-    usage: /<command> [add | back | cost | del | jump | list | rename | replace | search | set | unset]
+    usage: /<command> [add | back | cost | delete | jump | list | rename | replace | search | set | unset]
   wormhole reload:
     description: Reload config
     usage: /<command>
@@ -67,16 +67,16 @@ permissions:
       wormhole.back:
         description: Jump back to previous location
         default: true
-      wormhole.del.*:
+      wormhole.delete.*:
         description: Delete all types of jump
         children:
-          wormhole.del.other:
+          wormhole.delete.other:
             description: Delete other users' jumps
             default: op
-          wormhole.del.private:
+          wormhole.delete.private:
             description: Delete private jumps
             default: true
-          wormhole.del.public:
+          wormhole.delete.public:
             description: Delete public jumps
             default: op
       wormhole.free:
