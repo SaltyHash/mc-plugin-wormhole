@@ -16,6 +16,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -24,21 +25,6 @@ import org.bukkit.plugin.PluginDescriptionFile;
 class WormholeCommandHandler implements CommandExecutor {
     private final Wormhole    wormhole;
     private final EconManager econMgr;
-    
-    // Command usage strings
-    private static final String USAGE_ADD     = "/worm add [player | public] <jump name>";
-    //private static final String USAGE_BACK    = "/worm back";
-    //private static final String USAGE_COST    = "/worm cost";
-    private static final String USAGE_DEL     = "/worm del [player | public] <jump name>";
-    private static final String USAGE_JUMP    = "/worm jump [player | public] <jump name>";
-    private static final String USAGE_LIST    = "/worm list [player | public] [page]";
-    //private static final String USAGE_RELOAD  = "/worm reload";
-    private static final String USAGE_RENAME  = "/worm rename [player | public] <old name> <new name>";
-    private static final String USAGE_REPLACE = "/worm replace [player | public] <jump name>";
-    private static final String USAGE_SEARCH  = "/worm search [player | public] <jump name>";
-    private static final String USAGE_SET     = "/worm set [player | public] <jump name>";
-    //private static final String USAGE_UNSET   = "/worm unset";
-    //private static final String USAGE_VERSION = "/worm version";
     
     WormholeCommandHandler(Wormhole wormhole, EconManager econMgr) {
         this.wormhole = wormhole;
@@ -63,7 +49,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(USAGE_ADD);
+            player.sendMessage(getCommandUsage("worm add"));
             return;
         }
         String playerName = jumpInfo[0];
@@ -244,7 +230,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(USAGE_DEL);
+            player.sendMessage(getCommandUsage("worm delete"));
             return;
         }
         String playerName = jumpInfo[0];
@@ -328,7 +314,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(USAGE_JUMP);
+            player.sendMessage(getCommandUsage("worm jump"));
             return;
         }
         String playerName = jumpInfo[0];
@@ -465,7 +451,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
             // Display command usage
-            sender.sendMessage(USAGE_LIST);
+            sender.sendMessage(getCommandUsage("worm list"));
             return;
         }
         if (page < 1) page = 1;
@@ -596,11 +582,11 @@ class WormholeCommandHandler implements CommandExecutor {
             args = Arrays.copyOfRange(args, 0, args.length-1);
         }
         catch (ArrayIndexOutOfBoundsException e) {
-            player.sendMessage(USAGE_RENAME);
+            player.sendMessage(getCommandUsage("worm rename"));
             return;
         }
         if (newJumpName == null) {
-            player.sendMessage(USAGE_RENAME);
+            player.sendMessage(getCommandUsage("worm rename"));
             return;
         }
         
@@ -608,7 +594,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(USAGE_RENAME);
+            player.sendMessage(getCommandUsage("worm rename"));
             return;
         }
         String playerName  = jumpInfo[0];
@@ -707,7 +693,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(USAGE_REPLACE);
+            player.sendMessage(getCommandUsage("worm replace"));
             return;
         }
         String playerName = jumpInfo[0];
@@ -798,7 +784,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(USAGE_SEARCH);
+            player.sendMessage(getCommandUsage("worm search"));
             return;
         }
         String playerName = jumpInfo[0];
@@ -890,7 +876,7 @@ class WormholeCommandHandler implements CommandExecutor {
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
         if (jumpInfo == null) {
-            player.sendMessage(USAGE_SET);
+            player.sendMessage(getCommandUsage("worm set"));
             return;
         }
         String playerName = jumpInfo[0];
@@ -1104,6 +1090,13 @@ class WormholeCommandHandler implements CommandExecutor {
                 msg.append("\n    ").append(author);
         }
         sender.sendMessage(msg.toString());
+    }
+    
+    /** Returns the usage string for the command, or null if DNE. */
+    private String getCommandUsage(String command) {
+        PluginCommand pluginCommand = wormhole.getCommand(command);
+        if (pluginCommand == null) return null;
+        return ChatColor.DARK_PURPLE+"Usage:"+ChatColor.RESET+" "+pluginCommand.getUsage();
     }
     
     /**
