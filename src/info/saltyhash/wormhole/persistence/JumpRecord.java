@@ -292,7 +292,6 @@ public class JumpRecord {
                 ResultSet rs = ps.getGeneratedKeys();
                 if (rs.next()) {
                     id = rs.getInt(1);
-                    DBManager.logInfo("jump id = "+id);
                     return true;
                 } else {
                     throw new SQLException("Failed to retrieve generated key");
