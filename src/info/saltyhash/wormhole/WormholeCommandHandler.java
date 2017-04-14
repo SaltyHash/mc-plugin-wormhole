@@ -401,8 +401,9 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm list [player | public] [page]
      */
     private void commandList(CommandSender sender, String[] args) {
+        final int pageSize = 9;
+        int page;
         String playerName;
-        int page, pageSize = 10;
         
         // Parse arguments
         try {
