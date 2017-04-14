@@ -250,7 +250,8 @@ public final class DBManager {
         // Check for old pre-1.4.0 database file
         File oldDbFile = new File(dbFile.getParent()+File.separator+"Wormhole.sqlite.db");
         if (oldDbFile.exists()) {
-            logInfo(LOG_PREFIX+"Pre-1.4.0 database found; importing into new database...");
+            logInfo(LOG_PREFIX+"Pre-1.4.0 database found; importing into new database "+
+                    "(this could take a minute)...");
             
             // Get list of players from the server
             OfflinePlayer[] players = Bukkit.getOfflinePlayers();
@@ -262,12 +263,11 @@ public final class DBManager {
             Map<String, UUID> serverPlayerUsernamesToUuids = new HashMap<>(players.length);
             for (OfflinePlayer player : players) {
                 if (player.getUniqueId() == null) {
-                    logWarning(LOG_PREFIX+"Old player '"+player.getName()+
+                    logWarning(LOG_PREFIX+"Player '"+player.getName()+
                             "' does not have UUID; moving on...");
                     continue;
                 }
-                serverPlayerUsernamesToUuids.put(
-                        player.getName().toLowerCase(), player.getUniqueId());
+                serverPlayerUsernamesToUuids.put(player.getName(), player.getUniqueId());
             }
             
             // Get list of worlds from the server
@@ -279,7 +279,7 @@ public final class DBManager {
             // Create map of world names to world UUIDs
             Map<String, UUID> serverWorldNamesToUuids = new HashMap<>(worlds.size());
             for (World world : worlds) {
-                serverWorldNamesToUuids.put(world.getName().toLowerCase(), world.getUID());
+                serverWorldNamesToUuids.put(world.getName(), world.getUID());
             }
     
             Set<String> oldDbPlayerUsernames     = new HashSet<>();
@@ -299,23 +299,24 @@ public final class DBManager {
                 ResultSet rs = oldDbStatement.executeQuery(
                         "SELECT DISTINCT `player_name` FROM jumps WHERE `player_name` <> '';");
                 while (rs.next()) {
-                    oldDbPlayerUsernames.add(rs.getString("player_name").toLowerCase());
+                    oldDbPlayerUsernames.add(rs.getString("player_name"));
                 }
                 rs.close();
                 
                 // Get world names from old database
                 rs = oldDbStatement.executeQuery("SELECT DISTINCT `world_name` FROM jumps;");
                 while (rs.next()) {
-                    oldDbWorldNames.add(rs.getString("world_name").toLowerCase());
+                    oldDbWorldNames.add(rs.getString("world_name"));
                 }
                 rs.close();
                 rs = oldDbStatement.executeQuery("SELECT DISTINCT `world_name` FROM signs;");
                 while (rs.next()) {
-                    oldDbWorldNames.add(rs.getString("world_name").toLowerCase());
+                    oldDbWorldNames.add(rs.getString("world_name"));
                 }
                 rs.close();
                 
                 // Get jumps from old database
+                logInfo(LOG_PREFIX+"Getting jumps from old database...");
                 rs = oldDbStatement.executeQuery("SELECT * FROM jumps;");
                 while (rs.next()) {
                     Map<String, Object> oldDbJump = new HashMap<>(7);
@@ -331,6 +332,7 @@ public final class DBManager {
                 rs.close();
                 
                 // Get signs from old database
+                logInfo(LOG_PREFIX+"Getting signs from old database...");
                 rs = oldDbStatement.executeQuery("SELECT * FROM signs;");
                 while (rs.next()) {
                     Map<String, Object> oldDbSign = new HashMap<>(6);
@@ -384,6 +386,7 @@ public final class DBManager {
             }
             
             // Insert old database players into the new database
+            logInfo(LOG_PREFIX+"Adding players to new database...");
             try (PreparedStatement ps = conn.prepareStatement(
                     "INSERT INTO players (`uuid`,`username`) VALUES (?,?);")) {
                 for (String playerUsername : oldDbPlayerUsernames) {
@@ -406,6 +409,7 @@ public final class DBManager {
             }
             
             // Insert old database jumps into the new database
+            logInfo(LOG_PREFIX+"Adding jumps to new database...");
             Map<String, Integer> jumpNamesToIds = new HashMap<>();
             try (PreparedStatement ps = conn.prepareStatement("INSERT INTO jumps "+
                     "(`player_uuid`,`name`,`world_uuid`,`x`,`y`,`z`,`yaw`)"+
@@ -454,6 +458,7 @@ public final class DBManager {
             }
             
             // Insert old database signs into the new database
+            logInfo(LOG_PREFIX+"Adding signs to new database...");
             try (PreparedStatement ps = conn.prepareStatement("INSERT INTO signs "+
                     "(`world_uuid`,`x`,`y`,`z`,`jump_id`) VALUES (?,?,?,?,?);")) {
                 for (Map<String, Object> oldDbSign : oldDbSigns) {
@@ -474,7 +479,8 @@ public final class DBManager {
                     ps.addBatch();
                 }
                 // Execute batch and make sure all succeeded
-                for (int result : ps.executeBatch()) {
+                int[] results = ps.executeBatch();
+                for (int result : results) {
                     if (result < 1) {
                         logSevere(LOG_PREFIX+"Failed to insert sign from old database into new");
                         return false;
