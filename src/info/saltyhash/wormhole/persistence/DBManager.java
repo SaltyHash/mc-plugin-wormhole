@@ -5,6 +5,8 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.*;
 import java.util.*;
 import java.util.logging.Logger;
@@ -120,6 +122,20 @@ public final class DBManager {
         }
     }
     
+    /** Returns the latest database version. */
+    private static int getLatestDatabaseVersion() {
+        int latestVersion = 0;
+        while (true) {
+            try {
+                DBManager.class.getDeclaredMethod("migration"+latestVersion,
+                        Connection.class, String.class);
+            } catch (NoSuchMethodException e) {
+                return latestVersion-1;
+            }
+            latestVersion++;
+        }
+    }
+    
     /**
      * Sets the database version.  Logs errors.
      * @param  version The version number to set the database to.
@@ -128,9 +144,7 @@ public final class DBManager {
     private static boolean setDatabaseVersion(int version) {
         try (Statement s = getConnection().createStatement()) {
             s.executeUpdate("DELETE FROM schema_version;");
-            s.executeUpdate("INSERT INTO schema_version\n"+
-                    "(`version`) VALUES ("+version+");"
-            );
+            s.executeUpdate("INSERT INTO schema_version (`version`) VALUES ("+version+");");
         } catch (SQLException e) {
             logSevere("Failed to set database version");
             logSevere(e.toString());
@@ -145,102 +159,133 @@ public final class DBManager {
      * @return true on success; false on failure.
      */
     public static boolean migrate() {
-        switch (getDatabaseVersion()) {
-            case -1: if (!migration0()) return false;
-            default: break;
+        // Return if database is already at latest version
+        int version       = getDatabaseVersion();
+        int latestVersion = getLatestDatabaseVersion();
+        if (version == latestVersion) return true;
+        // Sanity check
+        if (version > latestVersion) {
+            logSevere("Current database version is "+version+
+                    " but the latest database version is "+latestVersion);
+            return false;
         }
-        return true;    // Success
+        
+        // Get database connection
+        Connection conn = getConnection();
+        
+        boolean autoCommit = true;
+        try {
+            // Commit any previous changes and disable autocommit
+            autoCommit = conn.getAutoCommit();
+            if (!autoCommit) conn.commit();
+            conn.setAutoCommit(false);
+            
+            // Perform migrations in order
+            for (int migration = version+1; migration <= latestVersion; migration++) {
+                String logPrefix = "[Migration "+migration+"] ";
+                
+                // Perform single migration
+                logInfo(logPrefix+"Starting:");
+                Method migrationMethod = DBManager.class.getDeclaredMethod(
+                        "migration"+migration, Connection.class, String.class);
+                migrationMethod.invoke(null, conn, logPrefix);
+                
+                // Set database version; error?
+                if (!setDatabaseVersion(migration))
+                    throw new SQLException("Failed to set database version to "+migration);
+                
+                // Commit changes
+                logInfo(logPrefix+"Committing changes");
+                conn.commit();
+                logInfo(logPrefix+"Done");
+            }
+            
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException
+                | SQLException e) {
+            e.printStackTrace();
+            logSevere("Failed to perform migrations!");
+            
+            // Roll back changes
+            logInfo("Rolling back changes");
+            try {
+                conn.rollback();
+            } catch (SQLException e1) {
+                logSevere("Failed to roll back changes");
+                e1.printStackTrace();
+            }
+            return false;
+            
+        } finally {
+            // Reset connection autocommit to previous value
+            try {
+                conn.setAutoCommit(autoCommit);
+            } catch (SQLException e) {
+                logWarning("Failed to set database autocommit to "+autoCommit);
+                e.printStackTrace();
+            }
+        }
+        
+        logInfo("Database migrations complete");
+        return true;
     }
     
     /* <Migrations> */
     
-    /**
-     * Migrates to database version from previous.  Logs errors.
-     * @return true on success; false on error.
-     */
-    private static boolean migration0() {
-        final UUID   PUBLIC_PLAYER_UUID = new UUID(0, 0);
-        final String LOG_PREFIX = "[Migration 0] ";
-        logInfo(LOG_PREFIX+"Starting...");
+    /** Migrates to database version from previous.  Logs errors. */
+    @SuppressWarnings("unused")
+    private static void migration0(Connection conn, String logPrefix)
+            throws IllegalStateException, SQLException {
+        final UUID PUBLIC_PLAYER_UUID = new UUID(0, 0);
         
         /* <Create Tables> */
         
-        Connection conn = getConnection();
-        
-        // Create table 'schema_version'
         try (Statement s = conn.createStatement()) {
-            s.execute("CREATE TABLE IF NOT EXISTS schema_version (\n" +
-                    "  `version` INTEGER);"
-            );
-        } catch (SQLException e) {
-            logSevere(LOG_PREFIX+"Failed to create table schema_version");
-            e.printStackTrace();
-            return false;
-        }
-        
-        // Create table 'players'
-        try (Statement s = conn.createStatement()) {
-            s.execute("CREATE TABLE IF NOT EXISTS players (\n" +
+            // Create table 'schema_version'
+            logInfo(logPrefix+"Creating table 'schema_version'");
+            s.execute("CREATE TABLE schema_version (\n" +
+                    "  `version` INTEGER);");
+            
+            // Create table 'players'
+            logInfo(logPrefix+"Creating table 'players'");
+            s.execute("CREATE TABLE players (\n" +
                     "  `uuid`     CHAR(36) PRIMARY KEY,\n" +
-                    "  `username` VARCHAR(16));"
-            );
-        } catch (SQLException e) {
-            logSevere(LOG_PREFIX+"Failed to create table 'players'");
-            e.printStackTrace();
-            return false;
-        }
-        
-        // Insert public player into players database
-        try (PreparedStatement s = conn.prepareStatement(
-                "INSERT INTO players (`uuid`,`username`) VALUES (?,?);")) {
-            s.setString(1, PUBLIC_PLAYER_UUID.toString());
-            s.setNull(2, Types.CHAR);
-            switch (s.executeUpdate()) {
-                case 1 : break;
-                case 0 : throw new SQLException("Record not added");
-                default: throw new SQLException("More than one record affected");
-            }
-        } catch (SQLException e) {
-            logSevere(LOG_PREFIX+"Failed to insert public player into table 'players'");
-            e.printStackTrace();
-            return false;
-        }
-        
-        // Create table 'jumps'
-        try (Statement s = conn.createStatement()) {
-            s.execute("CREATE TABLE IF NOT EXISTS jumps (\n" +
+                    "  `username` VARCHAR(16));");
+            
+            // Create table 'jumps'
+            logInfo(logPrefix+"Creating table 'jumps'");
+            s.execute("CREATE TABLE jumps (\n" +
                     "  `id`          INTEGER PRIMARY KEY,\n" +
                     "  `player_uuid` CHAR(36) REFERENCES players(`uuid`)\n" +
                     "                ON DELETE CASCADE ON UPDATE CASCADE,\n" +
                     "  `name`        TEXT,\n" +
                     "  `world_uuid`  CHAR(36),\n" +
                     "  `x` REAL, `y` REAL, `z` REAL, `yaw` REAL,\n" +
-                    "  UNIQUE (`player_uuid`, `name`));"
-            );
-        } catch (SQLException e) {
-            logSevere(LOG_PREFIX+"Failed to create table 'jumps'");
-            e.printStackTrace();
-            return false;
-        }
-        
-        // Create table 'signs'
-        try (Statement s = conn.createStatement()) {
-            s.execute("CREATE TABLE IF NOT EXISTS signs (\n" +
+                    "  UNIQUE (`player_uuid`, `name`));");
+            
+            // Create table 'signs'
+            logInfo(logPrefix+"Creating table 'signs'");
+            s.execute("CREATE TABLE signs (\n" +
                     "  `world_uuid` CHAR(36),\n" +
                     "  `x` INTEGER, `y` INTEGER, `z` INTEGER,\n" +
                     "  `jump_id` INTEGER REFERENCES jumps(`id`)\n" +
                     "            ON DELETE CASCADE ON UPDATE CASCADE,\n" +
-                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`));"
-            );
-        } catch (SQLException e) {
-            logSevere(LOG_PREFIX+"Failed to create table 'signs'");
-            e.printStackTrace();
-            return false;
+                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`));");
         }
         
-        if (!setDatabaseVersion(0)) {
-            logSevere(LOG_PREFIX+"Failed to set database version to 0");
-            return false;
+        // Insert public player into players database
+        logInfo(logPrefix+"Adding 'public' player");
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO players (`uuid`,`username`) VALUES (?,?);")) {
+            ps.setString(1, PUBLIC_PLAYER_UUID.toString());
+            ps.setNull(2, Types.CHAR);
+            switch (ps.executeUpdate()) {
+                case 0:
+                    throw new SQLException("Record not added");
+                case 1:
+                    break;
+                default:
+                    throw new SQLException("More than one record affected");
+            }
         }
         
         /* </Create Tables> */
@@ -250,20 +295,19 @@ public final class DBManager {
         // Check for old pre-1.4.0 database file
         File oldDbFile = new File(dbFile.getParent()+File.separator+"Wormhole.sqlite.db");
         if (oldDbFile.exists()) {
-            logInfo(LOG_PREFIX+"Pre-1.4.0 database found; importing into new database "+
-                    "(this could take a minute)...");
+            logInfo(logPrefix+"Pre-1.4.0 database found; importing into new database "+
+                    "(this could take a minute)");
             
             // Get list of players from the server
             OfflinePlayer[] players = Bukkit.getOfflinePlayers();
             if (players.length == 0) {
-                logSevere(LOG_PREFIX+"No existing players found on the server");
-                return false;
+                throw new IllegalStateException("No existing players found on the server");
             }
             // Create map of usernames to UUIDs
             Map<String, UUID> serverPlayerUsernamesToUuids = new HashMap<>(players.length);
             for (OfflinePlayer player : players) {
                 if (player.getUniqueId() == null) {
-                    logWarning(LOG_PREFIX+"Player '"+player.getName()+
+                    logWarning(logPrefix+"Player '"+player.getName()+
                             "' does not have UUID; moving on...");
                     continue;
                 }
@@ -273,8 +317,7 @@ public final class DBManager {
             // Get list of worlds from the server
             List<World> worlds = Bukkit.getWorlds();
             if (worlds.size() == 0) {
-                logSevere(LOG_PREFIX+"No existing worlds found on the server");
-                return false;
+                throw new IllegalStateException("No existing worlds found on the server");
             }
             // Create map of world names to world UUIDs
             Map<String, UUID> serverWorldNamesToUuids = new HashMap<>(worlds.size());
@@ -316,7 +359,7 @@ public final class DBManager {
                 rs.close();
                 
                 // Get jumps from old database
-                logInfo(LOG_PREFIX+"Getting jumps from old database...");
+                logInfo(logPrefix+"Getting jumps from old database");
                 rs = oldDbStatement.executeQuery("SELECT * FROM jumps;");
                 while (rs.next()) {
                     Map<String, Object> oldDbJump = new HashMap<>(7);
@@ -332,7 +375,7 @@ public final class DBManager {
                 rs.close();
                 
                 // Get signs from old database
-                logInfo(LOG_PREFIX+"Getting signs from old database...");
+                logInfo(logPrefix+"Getting signs from old database");
                 rs = oldDbStatement.executeQuery("SELECT * FROM signs;");
                 while (rs.next()) {
                     Map<String, Object> oldDbSign = new HashMap<>(6);
@@ -345,48 +388,32 @@ public final class DBManager {
                     oldDbSigns.add(oldDbSign);
                 }
                 rs.close();
-            } catch (ClassNotFoundException | SQLException e) {
-                logSevere(LOG_PREFIX+"Failed to import pre-1.4.0 database!");
-                e.printStackTrace();
-                return false;
+            } catch (ClassNotFoundException e) {
+                throw new IllegalStateException("Failed to connect to pre-1.4.0 database!");
             } finally {
-                if (oldDbStatement != null) {
-                    try { oldDbStatement.close(); }
-                    catch (SQLException e) {
-                        logWarning(LOG_PREFIX+"Failed to close old database statement");
-                        e.printStackTrace();
-                    }
-                }
-                if (oldDbConn != null) {
-                    try { oldDbConn.close(); }
-                    catch (SQLException e) {
-                        logWarning(LOG_PREFIX+"Failed to close connection to old database");
-                        e.printStackTrace();
-                    }
-                }
+                if (oldDbStatement != null) oldDbStatement.close();
+                if (oldDbConn != null)      oldDbConn.close();
             }
             
             // Make sure old database player usernames exist in server usernames
             for (String oldDbUsername : oldDbPlayerUsernames) {
                 if (!oldDbUsername.equals("") &&
                         !serverPlayerUsernamesToUuids.keySet().contains(oldDbUsername)) {
-                    logSevere(LOG_PREFIX+"Server does not have player '"+oldDbUsername+
-                            "' found in the old database");
-                    return false;
+                    throw new IllegalStateException("Server does not have player '"
+                            +oldDbUsername+"' found in the old database");
                 }
             }
             
             // Make sure old database world names exist in server
             for (String oldDbWorldName : oldDbWorldNames) {
                 if (!serverWorldNamesToUuids.keySet().contains(oldDbWorldName)) {
-                    logSevere(LOG_PREFIX+"Server does not have world '"+oldDbWorldName+
-                            "' found in the old database");
-                    return false;
+                    throw new IllegalStateException("Server does not have world '"+
+                            oldDbWorldName+"' found in the old database");
                 }
             }
             
             // Insert old database players into the new database
-            logInfo(LOG_PREFIX+"Adding players to new database...");
+            logInfo(logPrefix+"Adding players to new database");
             try (PreparedStatement ps = conn.prepareStatement(
                     "INSERT INTO players (`uuid`,`username`) VALUES (?,?);")) {
                 for (String playerUsername : oldDbPlayerUsernames) {
@@ -398,18 +425,13 @@ public final class DBManager {
                 // Execute batch insert and make sure all succeeded
                 for (int result : ps.executeBatch()) {
                     if (result < 1) {
-                        logSevere(LOG_PREFIX+"Failed to insert player from old database into new");
-                        return false;
+                        throw new SQLException("Failed to insert player from old database into new");
                     }
                 }
-            } catch (SQLException e) {
-                logSevere(LOG_PREFIX+"Failed to insert players from old database into new");
-                e.printStackTrace();
-                return false;
             }
             
             // Insert old database jumps into the new database
-            logInfo(LOG_PREFIX+"Adding jumps to new database...");
+            logInfo(logPrefix+"Adding jumps to new database");
             Map<String, Integer> jumpNamesToIds = new HashMap<>();
             try (PreparedStatement ps = conn.prepareStatement("INSERT INTO jumps "+
                     "(`player_uuid`,`name`,`world_uuid`,`x`,`y`,`z`,`yaw`)"+
@@ -437,8 +459,7 @@ public final class DBManager {
                     ps.setDouble(6, (double) oldDbJump.get("z"));
                     ps.setFloat (7,  (float) oldDbJump.get("yaw"));
                     if (ps.executeUpdate() < 1) {
-                        logSevere(LOG_PREFIX+"Failed to insert jump from old database into new");
-                        return false;
+                        throw new SQLException("Failed to insert jump from old database into new");
                     }
                     // Get the new ID of the inserted jump
                     ResultSet rs = ps.getGeneratedKeys();
@@ -446,19 +467,14 @@ public final class DBManager {
                         String key = playerUsername+"\n"+jumpName;
                         jumpNamesToIds.put(key, rs.getInt(1));
                     } else {
-                        logSevere(LOG_PREFIX+"Failed to get generated jump ID");
-                        return false;
+                        throw new SQLException("Failed to get generated jump ID");
                     }
                     rs.close();
                 }
-            } catch (SQLException e) {
-                logSevere(LOG_PREFIX+"Failed to insert jumps from old database into new");
-                e.printStackTrace();
-                return false;
             }
             
             // Insert old database signs into the new database
-            logInfo(LOG_PREFIX+"Adding signs to new database...");
+            logInfo(logPrefix+"Adding signs to new database");
             try (PreparedStatement ps = conn.prepareStatement("INSERT INTO signs "+
                     "(`world_uuid`,`x`,`y`,`z`,`jump_id`) VALUES (?,?,?,?,?);")) {
                 for (Map<String, Object> oldDbSign : oldDbSigns) {
@@ -482,23 +498,15 @@ public final class DBManager {
                 int[] results = ps.executeBatch();
                 for (int result : results) {
                     if (result < 1) {
-                        logSevere(LOG_PREFIX+"Failed to insert sign from old database into new");
-                        return false;
+                        throw new SQLException("Failed to insert sign from old database into new");
                     }
                 }
-            } catch (SQLException e) {
-                logSevere(LOG_PREFIX+"Failed to insert signs from old database into new");
-                e.printStackTrace();
-                return false;
             }
             
-            logInfo(LOG_PREFIX+"Done importing pre-1.4.0 database");
+            logInfo(logPrefix+"Done importing pre-1.4.0 database");
         }
         
         /* </Pre-1.4.0 Database Import> */
-        
-        logInfo(LOG_PREFIX+"Done");
-        return true;
     }
     
     /* </Migrations> */
