@@ -932,7 +932,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
     
         // Get sign block
-        Block target = player.getTargetBlock((Set<Material>) null, 5);
+        Block target = player.getTargetBlock((Set<Material>) null, 4);
         if (target == null || !(target.getState() instanceof Sign)) {
             player.sendMessage(ERROR_MSG_PREFIX+"you must be looking at a sign");
             return;
@@ -977,7 +977,7 @@ class WormholeCommandHandler implements CommandExecutor {
         Player player = (Player)sender;
         
         // Get target block
-        Block target = player.getTargetBlock((Set<Material>) null, 5);
+        Block target = player.getTargetBlock((Set<Material>) null, 4);
         // Target is not a sign?
         if (target == null || !(target.getState() instanceof Sign)) {
             player.sendMessage(ERROR_MSG_PREFIX+"you must be looking at a sign");
