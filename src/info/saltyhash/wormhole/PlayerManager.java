@@ -19,13 +19,6 @@ final class PlayerManager {
     /** Returns the object for key in given player (null if DNE). */
     private static Object getMetadata(Player player, String key) {
         for (MetadataValue value : player.getMetadata(key)) {
-            // TODO: Delete this
-            /*
-            if (value.getOwningPlugin().getDescription().getName().equals(
-                plugin.getDescription().getName())) {
-                return value.value();
-            }
-            */
             if (value.getOwningPlugin().equals(plugin)) return value.value();
         }
         return null;
@@ -47,6 +40,7 @@ final class PlayerManager {
             return null;
         }
     }
+    
     /** Sets the player's last jump. */
     static void setPreviousLocation(Player player, Location location) {
         setMetadata(player, previousLocationKey, location);

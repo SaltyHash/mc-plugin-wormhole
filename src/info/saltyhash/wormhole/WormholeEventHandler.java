@@ -20,11 +20,9 @@ import org.bukkit.event.player.PlayerLoginEvent;
 /** Handles events for Wormhole. */
 class WormholeEventHandler implements Listener {
     private final Wormhole    wormhole;
-    private final EconManager econMgr;
     
-    WormholeEventHandler(Wormhole wormhole, EconManager econMgr) {
+    WormholeEventHandler(Wormhole wormhole) {
         this.wormhole = wormhole;
-        this.econMgr  = econMgr;
     }
     
     /** Handles when a player right-clicks a sign.  JUMP! */
@@ -63,7 +61,7 @@ class WormholeEventHandler implements Listener {
         }
         
         // Make sure player can afford this action
-        if (!player.hasPermission("wormhole.free") && !econMgr.hasBalance(player, "use")) {
+        if (!player.hasPermission("wormhole.free") && !EconManager.hasBalance(player, "use")) {
             player.sendMessage(ChatColor.DARK_RED+
                     "You cannot afford to use signs pointing to jumps");
             return;
@@ -94,7 +92,7 @@ class WormholeEventHandler implements Listener {
         
         // Charge player
         if (!player.hasPermission("wormhole.free"))
-            econMgr.charge(player, "use");
+            EconManager.charge(player, "use");
     }
     
     /** Called when a player breaks a block. */
@@ -115,7 +113,7 @@ class WormholeEventHandler implements Listener {
         // Make sure player can afford this action
         Player player = event.getPlayer();
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "unset")) {
+                && !EconManager.hasBalance(player, "unset")) {
             player.sendMessage(ChatColor.DARK_RED+
                 "You cannot afford to unset signs pointing to jumps");
             event.setCancelled(true);
@@ -155,7 +153,7 @@ class WormholeEventHandler implements Listener {
             
             // Charge player
             if (!player.hasPermission("wormhole.free"))
-                econMgr.charge(player, "unset");
+                EconManager.charge(player, "unset");
         }
         // Failed?
         else {

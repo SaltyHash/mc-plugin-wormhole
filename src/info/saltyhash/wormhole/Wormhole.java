@@ -53,16 +53,14 @@ public class Wormhole extends JavaPlugin {
             }
         }
         
-        // Set up PlayerManager
+        // Set up PlayerManager and Economy
         PlayerManager.setup(this);
-        
-        // Set up Economy
-        EconManager econMgr = new EconManager(this);
+        EconManager.setup(this);
         
         // Register event handler and command handler
         getServer().getPluginManager().registerEvents(
-                new WormholeEventHandler(this, econMgr), this);
-        getCommand("wormhole").setExecutor(new WormholeCommandHandler(this, econMgr));
+                new WormholeEventHandler(this), this);
+        getCommand("wormhole").setExecutor(new WormholeCommandHandler(this));
         
         getLogger().info("Enabled");
     }

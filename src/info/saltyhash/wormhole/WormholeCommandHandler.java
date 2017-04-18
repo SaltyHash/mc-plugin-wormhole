@@ -23,12 +23,10 @@ import org.bukkit.plugin.PluginDescriptionFile;
 
 /** Handles commands given to Wormhole. */
 class WormholeCommandHandler implements CommandExecutor {
-    private final Wormhole    wormhole;
-    private final EconManager econMgr;
+    private final Wormhole wormhole;
     
-    WormholeCommandHandler(Wormhole wormhole, EconManager econMgr) {
+    WormholeCommandHandler(Wormhole wormhole) {
         this.wormhole = wormhole;
-        this.econMgr  = econMgr;
     }
     
     /**
@@ -80,7 +78,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "add")) {
+                && !EconManager.hasBalance(player, "add")) {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to add new jumps");
             return;
         }
@@ -124,7 +122,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 " jump " + jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "add");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "add");
     }
     
     /**
@@ -147,7 +145,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "back")) {
+                && !EconManager.hasBalance(player, "back")) {
             player.sendMessage(ChatColor.DARK_RED+
                     "You cannot afford to jump back to your previous location");
             return;
@@ -184,7 +182,7 @@ class WormholeCommandHandler implements CommandExecutor {
         PlayerManager.setPreviousLocation(player, newPreviousLocation);
     
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "back");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "back");
     }
     
     /**
@@ -192,21 +190,21 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm cost
      */
     private void commandCost(CommandSender sender) {
-        if (!econMgr.isEnabled()) {
+        if (!EconManager.isEnabled()) {
             sender.sendMessage(ChatColor.DARK_RED+"Economy system does not exist");
             return;
         }
         
         FileConfiguration config = wormhole.getConfig();
-        String add     = econMgr.econ.format(config.getDouble("cost.add"));
-        String back    = econMgr.econ.format(config.getDouble("cost.back"));
-        String del     = econMgr.econ.format(config.getDouble("cost.del"));
-        String jump    = econMgr.econ.format(config.getDouble("cost.jump"));
-        String rename  = econMgr.econ.format(config.getDouble("cost.rename"));
-        String replace = econMgr.econ.format(config.getDouble("cost.replace"));
-        String set     = econMgr.econ.format(config.getDouble("cost.set"));
-        String unset   = econMgr.econ.format(config.getDouble("cost.unset"));
-        String use     = econMgr.econ.format(config.getDouble("cost.use"));
+        String add     = EconManager.econ.format(config.getDouble("cost.add"));
+        String back    = EconManager.econ.format(config.getDouble("cost.back"));
+        String del     = EconManager.econ.format(config.getDouble("cost.del"));
+        String jump    = EconManager.econ.format(config.getDouble("cost.jump"));
+        String rename  = EconManager.econ.format(config.getDouble("cost.rename"));
+        String replace = EconManager.econ.format(config.getDouble("cost.replace"));
+        String set     = EconManager.econ.format(config.getDouble("cost.set"));
+        String unset   = EconManager.econ.format(config.getDouble("cost.unset"));
+        String use     = EconManager.econ.format(config.getDouble("cost.use"));
         
         sender.sendMessage(String.format(
             "%sWormhole Costs%s\n"+
@@ -273,7 +271,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "del")) {
+                && !EconManager.hasBalance(player, "del")) {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to delete jumps");
             return;
         }
@@ -313,7 +311,7 @@ class WormholeCommandHandler implements CommandExecutor {
             " jump " + jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "del");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "del");
     }
     
     /**
@@ -367,7 +365,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "jump")) {
+                && !EconManager.hasBalance(player, "jump")) {
             player.sendMessage(ChatColor.DARK_RED+
                     "You cannot afford to jump directly to a jump");
             return;
@@ -420,7 +418,7 @@ class WormholeCommandHandler implements CommandExecutor {
         PlayerManager.setPreviousLocation(player, from);
         
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "jump");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "jump");
     }
     
     /**
@@ -665,7 +663,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "rename")) {
+                && !EconManager.hasBalance(player, "rename")) {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to rename jumps");
             return;
         }
@@ -720,7 +718,7 @@ class WormholeCommandHandler implements CommandExecutor {
             oldJumpName, jumpRecord.getDescription(player)));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "rename");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "rename");
     }
     
     /**
@@ -773,7 +771,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "replace")) {
+                && !EconManager.hasBalance(player, "replace")) {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to replace jumps");
             return;
         }
@@ -819,7 +817,7 @@ class WormholeCommandHandler implements CommandExecutor {
             jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "replace");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "replace");
     }
     
     /**
@@ -972,7 +970,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "set")) {
+                && !EconManager.hasBalance(player, "set")) {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to set signs to jumps");
             return;
         }
@@ -1030,7 +1028,7 @@ class WormholeCommandHandler implements CommandExecutor {
             " to jump "+jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "set");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "set");
     }
     
     /**
@@ -1107,7 +1105,7 @@ class WormholeCommandHandler implements CommandExecutor {
     
         // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
-                && !econMgr.hasBalance(player, "unset")) {
+                && !EconManager.hasBalance(player, "unset")) {
             player.sendMessage(ChatColor.DARK_RED+
                     "You cannot afford to unset signs pointing to jumps");
             return;
@@ -1125,7 +1123,7 @@ class WormholeCommandHandler implements CommandExecutor {
                 " pointing to jump " + jumpRecord.getDescription(player));
         
         // Charge player
-        if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "unset");
+        if (!player.hasPermission("wormhole.free")) EconManager.charge(player, "unset");
     }
     
     /**
