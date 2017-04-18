@@ -27,19 +27,29 @@ public class Wormhole extends JavaPlugin {
             disable();
             return;
         }
-        
-        // Save public player record
-        PlayerRecord publicPlayerRecord = new PlayerRecord(PlayerRecord.PUBLIC_UUID, null);
-        if (!publicPlayerRecord.save()) {
-            getLogger().severe("Failed to save public player record to the database");
-            disable();
-            return;
-        }
         // Save logged in players to the database
         for (Player player : getServer().getOnlinePlayers()) {
-            PlayerRecord pr = new PlayerRecord(player);
-            if (!pr.save()) {
-                getLogger().warning("Failed to save player '"+player.getName()+"' to the database");
+            PlayerRecord pr = PlayerRecord.load(player.getUniqueId());
+            // Player record exists?
+            if (pr != null) {
+                // Player usernames do not match (player changed their username)?
+                if (!pr.username.equals(player.getName())) {
+                    // Update username and save
+                    pr.username = player.getName();
+                    if (!pr.save()) {
+                        getLogger().warning("Failed to save player '" + player.getName() +
+                                "' to the database");
+                    }
+                }
+            }
+            // Player record does not exist?
+            else {
+                // Create new player record and save
+                pr = new PlayerRecord(player);
+                if (!pr.save()) {
+                    getLogger().warning("Failed to save player '" + player.getName() +
+                            "' to the database");
+                }
             }
         }
         

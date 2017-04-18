@@ -85,34 +85,43 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         
-        // Get player record for jump
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        // Player does not exist?
-        if (playerRecord == null) {
-            player.sendMessage(ERROR_MSG_PREFIX+"player '"+playerName+"' does not exist");
-            return;
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                player.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
         }
         
         // Check if jump record already exists
-        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        JumpRecord jumpRecord = JumpRecord.load(playerId, jumpName);
         if (jumpRecord != null) {
-            player.sendMessage(ERROR_MSG_PREFIX+
-                    "jump "+jumpRecord.getDescription(player)+" already exists");
-        }
-        
-        // Create new jump record
-        jumpRecord = new JumpRecord(playerRecord.uuid, jumpName, player.getLocation());
-        
-        // Save jump record; failed (unknown reason)?
-        if (!jumpRecord.save()) {
-            player.sendMessage(ERROR_MSG_PREFIX+"internal error");
-            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to add jump "+
-                    jumpRecord.getDescription()+"; failed to save jump record");
+            player.sendMessage(ERROR_MSG_PREFIX +
+                    "jump " + jumpRecord.getDescription(player) + " already exists");
             return;
         }
         
-        player.sendMessage(ChatColor.DARK_GREEN+"Added"+ChatColor.RESET+
-                " jump "+jumpRecord.getDescription(player));
+        // Create new jump record
+        jumpRecord = new JumpRecord(playerId, jumpName, player.getLocation());
+        
+        // Save jump record; failed (unknown reason)?
+        if (!jumpRecord.save()) {
+            player.sendMessage(ERROR_MSG_PREFIX + "internal error");
+            wormhole.getLogger().warning("Player '" + player.getName() + "' failed to add jump " +
+                    jumpRecord.getDescription() + "; failed to save jump record");
+            return;
+        }
+        
+        player.sendMessage(ChatColor.DARK_GREEN + "Added" + ChatColor.RESET +
+                " jump " + jumpRecord.getDescription(player));
         
         // Charge player
         if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "add");
@@ -161,7 +170,7 @@ class WormholeCommandHandler implements CommandExecutor {
         // Teleport the player to the previous location; failed?
         if (!prevJumpRecord.teleportPlayer(player)) {
             player.sendMessage(ChatColor.DARK_RED+
-                    "Failed to jump to previous location; unknown reason");
+                    "Failed to jump to previous location; internal error");
             wormhole.getLogger().warning("Failed to jump player '"+player.getName()+
                     "' to previous location; unknown reason");
             return;
@@ -219,6 +228,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm delete [player | public] <jump name>
      */
     private void commandDelete(CommandSender sender, String[] args) {
+        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to delete jump; ";
+        
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -266,33 +277,40 @@ class WormholeCommandHandler implements CommandExecutor {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to delete jumps");
             return;
         }
-        
-        // Retrieve the player record
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        if (playerRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                    "Failed to delete jump; player '"+playerName+"' does not exist."
-            );
-            return;
+    
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                player.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
         }
         
         // Retrieve the jump record
-        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        JumpRecord jumpRecord = JumpRecord.load(playerId, jumpName);
         if (jumpRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to delete jump; jump does not exist.");
+            player.sendMessage(ERROR_MSG_PREFIX + "jump does not exist");
             return;
         }
         
         // Delete the jump; failed?
         if (!jumpRecord.delete()) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to delete jump; unknown error.");
-            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to delete jump "+
-                    jumpRecord.getDescription()+"; unknown reason.");
+            player.sendMessage(ERROR_MSG_PREFIX + "unknown error");
+            wormhole.getLogger().warning("Player '" + player.getName() +
+                    "' failed to delete jump " + jumpRecord.getDescription() + "; unknown reason.");
             return;
         }
         
-        player.sendMessage(ChatColor.DARK_GREEN+"Deleted"+ChatColor.RESET+
-            " jump "+jumpRecord.getDescription(player));
+        player.sendMessage(ChatColor.RED + "Deleted" + ChatColor.RESET +
+            " jump " + jumpRecord.getDescription(player));
         
         // Charge player
         if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "del");
@@ -303,6 +321,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm jump [player | public] <jump name>
      */
     private void commandJump(CommandSender sender, String[] args) {
+        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to jump; ";
+        
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -352,26 +372,33 @@ class WormholeCommandHandler implements CommandExecutor {
                     "You cannot afford to jump directly to a jump");
             return;
         }
-        
-        // Get the player record
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        // Player does not exist?
-        if (playerRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                    "Failed to jump; player '"+playerName+"' does not exist");
-            return;
-        }
     
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                player.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
+        }
+        
         // Get the jump record
-        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        JumpRecord jumpRecord = JumpRecord.load(playerId, jumpName);
         // Jump does not exist?
         if (jumpRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to jump; jump "+
-                    JumpRecord.getDescription(player, playerName, jumpName)+" does not exist");
+            player.sendMessage(ERROR_MSG_PREFIX + "jump " +
+                    JumpRecord.getDescription(player, playerName, jumpName) + " does not exist");
             
             // A public jump exists with the same name?  Notify the player.
-            if (JumpRecord.load(PlayerRecord.PUBLIC_UUID, jumpName) != null)
-                player.sendMessage("Did you mean \"public "+jumpName+"\"?");
+            if (JumpRecord.load(null, jumpName) != null)
+                player.sendMessage("Did you mean \"public " + jumpName + "\"?");
             return;
         }
         
@@ -379,9 +406,9 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Teleport the player; failed?
         if (!jumpRecord.teleportPlayer(player)) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to jump; unknown reason");
-            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to jump to "+
-                    jumpRecord.getDescription()+"; unknown reason");
+            player.sendMessage(ERROR_MSG_PREFIX + "unknown reason");
+            wormhole.getLogger().warning("Player '" + player.getName() + "' failed to jump to "+
+                    jumpRecord.getDescription() + "; unknown reason");
             return;
         }
         
@@ -401,6 +428,7 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm list [player | public] [page]
      */
     private void commandList(CommandSender sender, String[] args) {
+        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to list jumps; ";
         final int pageSize = 9;
         int page;
         String playerName;
@@ -480,28 +508,36 @@ class WormholeCommandHandler implements CommandExecutor {
                 return;
             }
         }
-        
-        // Get the player record
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        // Player does not exist?
-        if (playerRecord == null) {
-            sender.sendMessage(ChatColor.DARK_RED+"Player '"+playerName+"' does not exist");
-            return;
+    
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                sender.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
         }
         
         // Get list of jump records
-        List<JumpRecord> jumpRecords = JumpRecord.load(playerRecord.uuid);
+        List<JumpRecord> jumpRecords = JumpRecord.loadWithPlayerId(playerId);
         // Unknown error?
         if (jumpRecords == null) {
-            sender.sendMessage(ChatColor.DARK_RED+"Failed to list jumps; unknown reason");
-            wormhole.getLogger().warning(sender.getName()+" failed to list jumps for player '"+
-                    playerName+"; unknown reason");
+            sender.sendMessage(ERROR_MSG_PREFIX + "unknown reason");
+            wormhole.getLogger().warning(sender.getName() + " failed to list jumps for player '" +
+                    playerName + "'; unknown reason");
             return;
         }
         
         // Player has no jumps?
         if (jumpRecords.isEmpty()) {
-            sender.sendMessage(ChatColor.DARK_PURPLE+"No jumps to list");
+            sender.sendMessage(ChatColor.DARK_PURPLE + "No jumps to list");
             return;
         }
         
@@ -567,6 +603,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm rename [player | public] <old name> <new name>
      */
     private void commandRename(CommandSender sender, String[] args) {
+        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to rename jump; ";
+        
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -603,7 +641,7 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Check permissions
         // Jump is public?
-        if (oldJumpName == null) {
+        if (playerName == null) {
             if (!player.hasPermission("wormhole.rename.public")) {
                 player.sendMessage(ChatColor.DARK_RED+"You cannot rename public jumps");
                 return;
@@ -631,31 +669,37 @@ class WormholeCommandHandler implements CommandExecutor {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to rename jumps");
             return;
         }
-        
-        // Get the player record
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        // Player does not exist?
-        if (playerRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                    "Failed to rename jump; player '"+playerName+"' does not exist");
-            return;
+    
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                player.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
         }
         
         // Try to get a jump record matching the new name
-        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, newJumpName);
+        JumpRecord jumpRecord = JumpRecord.load(playerId, newJumpName);
         // Jump with new name already exists?
         if (jumpRecord != null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                    "Failed to rename jump; a jump named '"+newJumpName+"' already exists");
+            player.sendMessage(ERROR_MSG_PREFIX + "a jump named '" + newJumpName +
+                    "' already exists");
             return;
         }
         
         // Get the jump record with the old name
-        jumpRecord = JumpRecord.load(playerRecord.uuid, oldJumpName);
+        jumpRecord = JumpRecord.load(playerId, oldJumpName);
         // Jump DNE?
         if (jumpRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                    "Failed to rename jump; jump '"+oldJumpName+"' does not exist");
+            player.sendMessage(ERROR_MSG_PREFIX + "jump '" + oldJumpName + "' does not exist");
             return;
         }
         
@@ -663,9 +707,10 @@ class WormholeCommandHandler implements CommandExecutor {
         jumpRecord.name = newJumpName;
         // Error?
         if (!jumpRecord.save()) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to rename jump; unknown reason");
-            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to rename jump '"+
-                    oldJumpName+"' to '"+newJumpName+"'; unknown reason");
+            player.sendMessage(ERROR_MSG_PREFIX + "unknown reason");
+            wormhole.getLogger().warning("Player '" + player.getName() +
+                    "' failed to rename jump '" + oldJumpName + "' to '" + newJumpName +
+                    "'; unknown reason");
             return;
         }
         
@@ -683,6 +728,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm replace [player | public] <jump name>
      */
     private void commandReplace(CommandSender sender, String[] args) {
+        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to replace jump; ";
+        
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
             sender.sendMessage("Must be a player");
@@ -730,22 +777,29 @@ class WormholeCommandHandler implements CommandExecutor {
             player.sendMessage(ChatColor.DARK_RED+"You cannot afford to replace jumps");
             return;
         }
-        
-        // Get the player record
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        // Player does not exist?
-        if (playerRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+
-                    "Failed to replace jump; player '"+playerName+"' does not exist");
-            return;
+    
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                player.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
         }
         
         // Get the jump record
-        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        JumpRecord jumpRecord = JumpRecord.load(playerId, jumpName);
         // Jump does not exist?
         if (jumpRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to replace jump; jump "+
-                    JumpRecord.getDescription(player, playerName, jumpName)+" does not exist");
+            player.sendMessage(ERROR_MSG_PREFIX + "jump " +
+                    JumpRecord.getDescription(player, playerName, jumpName) + " does not exist");
             return;
         }
         
@@ -754,10 +808,10 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Save jump record; failed?
         if (!jumpRecord.save()) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to replace jump "+
-                    jumpRecord.getDescription(player)+"; internal error");
-            wormhole.getLogger().warning("Player '"+player.getName()+"' failed to replace jump "+
-                    jumpRecord.getDescription()+"; failed to save jump record");
+            player.sendMessage(ERROR_MSG_PREFIX + "internal error");
+            wormhole.getLogger().warning("Player '" + player.getName() +
+                    "' failed to replace jump " + jumpRecord.getDescription() +
+                    "; failed to save jump record");
             return;
         }
         
@@ -815,16 +869,24 @@ class WormholeCommandHandler implements CommandExecutor {
             }
         }
         
-        // Get the player record
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        // Player does not exist?
-        if (playerRecord == null) {
-            player.sendMessage(ChatColor.DARK_RED+"Player '"+playerName+"' does not exist");
-            return;
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                player.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
         }
         
         // Get list of jump records
-        List<JumpRecord> jumpRecords = JumpRecord.loadLikeName(playerRecord.uuid, jumpName);
+        List<JumpRecord> jumpRecords = JumpRecord.loadLikeName(playerId, jumpName);
         // Unknown error?
         if (jumpRecords == null) {
             player.sendMessage(ERROR_MSG_PREFIX+"internal error");
@@ -835,8 +897,9 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Search results empty?
         if (jumpRecords.isEmpty()) {
-            player.sendMessage(ChatColor.DARK_PURPLE+"No jumps match your search"+ChatColor.RESET+
-                    " for "+JumpRecord.getDescription(player, playerName, jumpName));
+            player.sendMessage(ChatColor.DARK_PURPLE + "No jumps match your search" +
+                    ChatColor.RESET + " for " +
+                    JumpRecord.getDescription(player, playerName, jumpName));
             return;
         }
         
@@ -914,16 +977,24 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         
-        // Get the player record
-        PlayerRecord playerRecord = PlayerRecord.load(playerName);
-        // Player does not exist?
-        if (playerRecord == null) {
-            player.sendMessage(ERROR_MSG_PREFIX+"player '"+playerName+"' does not exist");
-            return;
+        // Get player ID for jump
+        Integer playerId = null;    // Assume public
+        // Jump is private?
+        if (playerName != null) {
+            // Get player record for jump
+            PlayerRecord playerRecord = PlayerRecord.load(playerName);
+            // Player does not exist?
+            if (playerRecord == null) {
+                player.sendMessage(ERROR_MSG_PREFIX +
+                        "player '" + playerName + "' does not exist");
+                return;
+            }
+            // Set player ID
+            playerId = playerRecord.getId();
         }
         
         // Get the jump record
-        JumpRecord jumpRecord = JumpRecord.load(playerRecord.uuid, jumpName);
+        JumpRecord jumpRecord = JumpRecord.load(playerId, jumpName);
         // Jump does nt exist?
         if (jumpRecord == null) {
             player.sendMessage(ERROR_MSG_PREFIX+"jump "+
@@ -1007,16 +1078,6 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         
-        // Get player record
-        PlayerRecord playerRecord = jumpRecord.getPlayerRecord();
-        // Player record DNE?  ==>  orphaned jump record, which should not happen.
-        if (playerRecord == null) {
-            player.sendMessage(ERROR_MSG_PREFIX+"internal error");
-            wormhole.getLogger().warning("Player '"+player.getName()+
-                    "' tried to unset a sign record for which no player record exists");
-            return;
-        }
-        
         // Check permissions
         // Jump is public?
         if (jumpRecord.isPublic()) {
@@ -1028,7 +1089,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         // Jump belongs to the player?
         //else if (player.getUniqueId().equals(playerRecord.uuid)) {
-        else if (playerRecord.isPlayer(player)) {
+        else if (jumpRecord.belongsTo(player)) {
             if (!player.hasPermission("wormhole.unset.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot unset signs pointing to your jumps");
@@ -1060,8 +1121,8 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         
-        player.sendMessage(ChatColor.DARK_GREEN+"Unset sign"+ChatColor.RESET+
-                " pointing to jump "+jumpRecord.getDescription(player));
+        player.sendMessage(ChatColor.RED + "Unset sign" + ChatColor.RESET +
+                " pointing to jump " + jumpRecord.getDescription(player));
         
         // Charge player
         if (!player.hasPermission("wormhole.free")) econMgr.charge(player, "unset");

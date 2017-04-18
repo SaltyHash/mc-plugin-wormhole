@@ -17,8 +17,6 @@ import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 
-import java.util.logging.Logger;
-
 /** Handles events for Wormhole. */
 class WormholeEventHandler implements Listener {
     private final Wormhole    wormhole;
@@ -98,7 +96,7 @@ class WormholeEventHandler implements Listener {
         if (!player.hasPermission("wormhole.free"))
             econMgr.charge(player, "use");
     }
-
+    
     /** Called when a player breaks a block. */
     @EventHandler(priority=EventPriority.NORMAL, ignoreCancelled=true)
     public void onBlockBreak(BlockBreakEvent event) {
@@ -112,7 +110,7 @@ class WormholeEventHandler implements Listener {
         
         // Get jump destination of sign
         JumpRecord jump = signRecord.getJumpRecord();
-        if (jump == null) return;   // This should never happen
+        if (jump == null) return;   // TODO: This should never happen
         
         // Make sure player can afford this action
         Player player = event.getPlayer();
@@ -170,7 +168,7 @@ class WormholeEventHandler implements Listener {
                 sign.getY(), sign.getZ(), jump.getDescription()));
         }
     }
-
+    
     /** Called when a player damages a block. */
     @EventHandler(priority=EventPriority.NORMAL)
     public void onBlockDamage(BlockDamageEvent event) {
@@ -184,7 +182,7 @@ class WormholeEventHandler implements Listener {
         
         // Get jump record of the sign record
         JumpRecord jumpRecord = signRecord.getJumpRecord();
-        if (jumpRecord == null) return;     // This should never happen
+        if (jumpRecord == null) return;     // TODO: This should never happen
         
         // Check permissions
         Player player = event.getPlayer();
@@ -199,8 +197,8 @@ class WormholeEventHandler implements Listener {
         }
         
         // Display jump
-        player.sendMessage(String.format("%sSign is set%s to jump %s",
-            ChatColor.DARK_PURPLE, ChatColor.RESET, jumpRecord.getDescription(player)));
+        player.sendMessage(ChatColor.DARK_PURPLE + "Sign is set" + ChatColor.RESET +
+                " to jump " + jumpRecord.getDescription(player));
     }
 
     /** Called when player interacts with something. */
@@ -209,29 +207,39 @@ class WormholeEventHandler implements Listener {
         Player player = event.getPlayer();
         Block block   = event.getClickedBlock();
         
-        // Right-click on a block
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            // Handle a right-click event on a sign [post]
-            if (block.getState() instanceof Sign) {
-                // Get sign
-                Sign sign = (Sign)block.getState();
-                // Handle sign click
-                handleSignClick(event, player, sign);
-            }
+        // Right-clicked on a sign block?
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && block.getState() instanceof Sign) {
+            // Handle sign click
+            handleSignClick(event, player, (Sign) block.getState());
         }
     }
     
     /** Called when a player logs into the server. */
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled=true)
     public void onPlayerLogin(PlayerLoginEvent event) {
-        // Go ahead and save the player to the database
         Player player   = event.getPlayer();
-        PlayerRecord pr = new PlayerRecord(player);
-        if (!pr.save()) {
-            Logger logger = wormhole.getLogger();
-            logger.warning("Failed to save player '"+player.getName()+
-                    "' to the database after login."
-            );
+        PlayerRecord pr = PlayerRecord.load(player.getUniqueId());
+        
+        // Player already exists in database?
+        if (pr != null) {
+            // Player usernames do not match (player changed their username)?
+            if (!pr.username.equals(player.getName())) {
+                // Update username and save
+                pr.username = player.getName();
+                if (!pr.save()) {
+                    wormhole.getLogger().warning("Failed to save player '" + player.getName() +
+                            "' to the database");
+                }
+            }
+        }
+        // Player record does not exist?
+        else {
+            // Create new player record and save
+            pr = new PlayerRecord(player);
+            if (!pr.save()) {
+                wormhole.getLogger().warning("Failed to save player '" + player.getName() +
+                        "' to the database");
+            }
         }
     }
 }

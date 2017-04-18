@@ -235,7 +235,6 @@ public final class DBManager {
     @SuppressWarnings("unused")
     private static void migration0(Connection conn, String logPrefix)
             throws IllegalStateException, SQLException {
-        final UUID PUBLIC_PLAYER_UUID = new UUID(0, 0);
         
         /* <Create Tables> */
         
@@ -248,47 +247,40 @@ public final class DBManager {
             // Create table 'players'
             logInfo(logPrefix+"Creating table 'players'");
             s.execute("CREATE TABLE players (\n" +
-                    "  `uuid`     CHAR(36) PRIMARY KEY,\n" +
-                    "  `username` VARCHAR(16));");
+                    "  `id`       INTEGER PRIMARY KEY,\n" +
+                    "  `uuid`     CHAR(36) NOT NULL UNIQUE,\n" +
+                    "  `username` VARCHAR(16) NOT NULL);");
             
             // Create table 'jumps'
             logInfo(logPrefix+"Creating table 'jumps'");
             s.execute("CREATE TABLE jumps (\n" +
-                    "  `id`          INTEGER PRIMARY KEY,\n" +
-                    "  `player_uuid` CHAR(36) REFERENCES players(`uuid`)\n" +
-                    "                ON DELETE CASCADE ON UPDATE CASCADE,\n" +
-                    "  `name`        TEXT,\n" +
-                    "  `world_uuid`  CHAR(36),\n" +
-                    "  `x` REAL, `y` REAL, `z` REAL, `yaw` REAL,\n" +
-                    "  UNIQUE (`player_uuid`, `name`));");
+                    "  `id`         INTEGER PRIMARY KEY,\n" +
+                    "  `player_id`  INTEGER REFERENCES players(`id`)\n" +
+                    "               ON DELETE CASCADE ON UPDATE CASCADE,\n" +
+                    "  `name`       VARCHAR(100) NOT NULL,\n" +
+                    "  `world_uuid` CHAR(36) NOT NULL,\n" +
+                    "  `x` DOUBLE PRECISION NOT NULL,\n" +
+                    "  `y` DOUBLE PRECISION NOT NULL,\n" +
+                    "  `z` DOUBLE PRECISION NOT NULL,\n" +
+                    "  `yaw` FLOAT NOT NULL,\n" +
+                    "  UNIQUE (`player_id`, `name`));");
             
             // Create table 'signs'
             logInfo(logPrefix+"Creating table 'signs'");
             s.execute("CREATE TABLE signs (\n" +
-                    "  `world_uuid` CHAR(36),\n" +
-                    "  `x` INTEGER, `y` INTEGER, `z` INTEGER,\n" +
-                    "  `jump_id` INTEGER REFERENCES jumps(`id`)\n" +
+                    "  `id` INTEGER PRIMARY KEY,\n" +
+                    "  `world_uuid` CHAR(36) NOT NULL,\n" +
+                    "  `x` INTEGER NOT NULL,\n" +
+                    "  `y` INTEGER NOT NULL,\n" +
+                    "  `z` INTEGER NOT NULL,\n" +
+                    "  `jump_id` INTEGER NOT NULL REFERENCES jumps(`id`)\n" +
                     "            ON DELETE CASCADE ON UPDATE CASCADE,\n" +
-                    "  PRIMARY KEY (`world_uuid`, `x`, `y`, `z`));");
-        }
-        
-        // Insert public player into players database
-        logInfo(logPrefix+"Adding 'public' player");
-        try (PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO players (`uuid`,`username`) VALUES (?,?);")) {
-            ps.setString(1, PUBLIC_PLAYER_UUID.toString());
-            ps.setNull(2, Types.CHAR);
-            switch (ps.executeUpdate()) {
-                case 0:
-                    throw new SQLException("Record not added");
-                case 1:
-                    break;
-                default:
-                    throw new SQLException("More than one record affected");
-            }
+                    "  UNIQUE (`world_uuid`, `x`, `y`, `z`));");
         }
         
         /* </Create Tables> */
+        
+        if (true) return;
         
         /* <Pre-1.4.0 Database Import> */
         
@@ -442,7 +434,7 @@ public final class DBManager {
                     UUID   playerUuid;
                     // - Public jump?
                     if (playerUsername.equals(""))
-                        playerUuid = PUBLIC_PLAYER_UUID;
+                        playerUuid = null;
                     else
                         playerUuid = serverPlayerUsernamesToUuids.get(playerUsername);
                     // Get jump name

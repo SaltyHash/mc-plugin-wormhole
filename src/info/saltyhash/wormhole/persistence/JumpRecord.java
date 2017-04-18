@@ -12,45 +12,46 @@ import java.util.List;
 import java.util.UUID;
 
 /** Represents a row in the database table 'jumps'. */
-@SuppressWarnings("WeakerAccess")
+//@SuppressWarnings("WeakerAccess")
 public class JumpRecord {
     public Integer id;          // Primary key
-    public UUID    playerUuid;  // Foreign key to players.uuid. Unique with name.
-    public String  name;
+    public Integer playerId;    // Foreign key to players.id. Unique with name. null ==> public.
+    public String  name;        // Unique with playerId
     public UUID    worldUuid;
     public double  x, y, z;
     public float   yaw;
     
     public JumpRecord() {}
     
-    public JumpRecord(UUID playerUuid, String name, Location l) {
-        this(playerUuid, name, l.getWorld().getUID(), l.getX(), l.getY(), l.getZ(), l.getYaw());
+    public JumpRecord(Integer playerId, String name, Location l) {
+        this(playerId, name, l.getWorld().getUID(), l.getX(), l.getY(), l.getZ(), l.getYaw());
     }
     
-    public JumpRecord(UUID playerUuid, String name, UUID worldUuid,
+    public JumpRecord(Integer playerId, String name, UUID worldUuid,
                       double x, double y, double z, float yaw) {
         this.id = null;
-        this.playerUuid = playerUuid;
-        this.name       = name;
-        this.worldUuid  = worldUuid;
+        this.playerId  = playerId;
+        this.name      = name;
+        this.worldUuid = worldUuid;
         this.x = x; this.y = y; this.z = z; this.yaw = yaw;
     }
     
     /** Constructs a jump record from a ResultSet containing all columns of the table. */
     private JumpRecord(ResultSet rs) throws SQLException {
-        this.id         = rs.getInt("id");
-        this.playerUuid = UUID.fromString(rs.getString("player_uuid"));
-        this.name       = rs.getString("name");
-        this.worldUuid  = UUID.fromString(rs.getString("world_uuid"));
-        this.x          = rs.getDouble("x");
-        this.y          = rs.getDouble("y");
-        this.z          = rs.getDouble("z");
-        this.yaw        = rs.getFloat("yaw");
+        this.id        = rs.getInt("id");
+        this.playerId  = (Integer) rs.getObject("player_id");
+        this.name      = rs.getString("name");
+        this.worldUuid = UUID.fromString(rs.getString("world_uuid"));
+        this.x         = rs.getDouble("x");
+        this.y         = rs.getDouble("y");
+        this.z         = rs.getDouble("z");
+        this.yaw       = rs.getFloat("yaw");
     }
     
-    /** Returns true if the jump belongs to the player. */
+    /** Returns true if the jump belongs to the player (and is not public). */
     public boolean belongsTo(Player player) {
-        return (player.getUniqueId().equals(playerUuid));
+        PlayerRecord playerRecord = getPlayerRecord();
+        return (playerRecord != null && playerRecord.isPlayer(player));
     }
     
     /**
@@ -81,7 +82,9 @@ public class JumpRecord {
     
     /** Returns a general description of the jump. */
     public String getDescription() {
-        return getDescription(null, getPlayerRecord().username, name);
+        PlayerRecord playerRecord = getPlayerRecord();
+        return getDescription(
+                null, (playerRecord != null ? playerRecord.username : null), name);
     }
     
     /**
@@ -89,7 +92,9 @@ public class JumpRecord {
      * @param player Player for whom to format the description.
      */
     public String getDescription(Player player) {
-        return getDescription(player, getPlayerRecord().username, name);
+        PlayerRecord playerRecord = getPlayerRecord();
+        return getDescription(
+                player, (playerRecord != null ? playerRecord.username : null), name);
     }
     
     /**
@@ -109,17 +114,16 @@ public class JumpRecord {
     
     /** Returns the jump location. */
     public Location getLocation() {
-        World world = Bukkit.getServer().getWorld(worldUuid);
-        return new Location(world, x, y, z, yaw, 0);
+        return new Location(Bukkit.getWorld(worldUuid), x, y, z, yaw, 0);
     }
     
-    /** Returns the player record to which the jump record belongs. */
+    /** Returns the player record to which the jump record belongs, or null if public. */
     public PlayerRecord getPlayerRecord() {
-        return PlayerRecord.load(playerUuid);
+        return (playerId != null) ? PlayerRecord.load(playerId) : null;
     }
     
     public boolean isPublic() {
-        return (playerUuid.equals(PlayerRecord.PUBLIC_UUID));
+        return (playerId == null);
     }
     
     /**
@@ -127,7 +131,7 @@ public class JumpRecord {
      * @param  id ID of the jump.
      * @return Jump record or null if DNE or error.
      */
-    public static JumpRecord load(int id) {
+    public static JumpRecord loadWithId(int id) {
         // Get database connection
         Connection conn = DBManager.getConnection();
         if (conn == null) return null;
@@ -148,23 +152,27 @@ public class JumpRecord {
     }
     
     /**
-     * Returns list of all JumpRecords belonging to the player, in alphabetical order.  Logs errors.
-     * @param  playerUuid UUID of the player to which the JumpRecords belong.
-     * @return List of all JumpRecords belonging to the player (may be empty), or null on error.
+     * Returns alphabetical list of all jump records belonging to the player.  Logs errors.
+     * @param  playerId Database ID of the player to which the jump records belong (null if public).
+     * @return List of all jump records belonging to the player (may be empty), or null on error.
      */
-    public static List<JumpRecord> load(UUID playerUuid) {
+    public static List<JumpRecord> loadWithPlayerId(Integer playerId) {
         // Get database connection
         Connection conn = DBManager.getConnection();
         if (conn == null) return null;
         
         // Create select statement
-        final String sql = "SELECT * FROM jumps WHERE `player_uuid`=? ORDER BY `name`;";
+        String sql = (playerId != null) ?
+                "SELECT * FROM jumps WHERE `player_id`=? ORDER BY `name`;" :
+                "SELECT * FROM jumps WHERE `player_id` IS NULL ORDER BY `name`;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, playerUuid.toString());
+            if (playerId != null) {
+                ps.setObject(1, playerId, Types.INTEGER);
+            }
             ResultSet rs = ps.executeQuery();
             
-            // Get JumpRecords from the result set and return
+            // Get jump records from the result set and return
             List<JumpRecord> jumpRecords = new ArrayList<>();
             while (rs.next())
                 jumpRecords.add(new JumpRecord(rs));
@@ -176,28 +184,34 @@ public class JumpRecord {
     }
     
     /**
-     * Gets the jump record with the given ID from the database.  Logs errors.
-     * @param  playerUuid UUID of the player to which the jump record belongs.
+     * Gets the jump record with the given player ID and name from the database.  Logs errors.
+     * @param  playerId Database ID of the player to which the jump record belongs (null if public).
      * @param  name Jump name.
      * @return Jump record or null if DNE or error.
      */
-    public static JumpRecord load(UUID playerUuid, String name) {
+    public static JumpRecord load(Integer playerId, String name) {
         // Get database connection
         Connection conn = DBManager.getConnection();
         if (conn == null) return null;
         
         // Create select statement
-        final String sql = "SELECT * FROM jumps WHERE `player_uuid`=? AND `name`=? LIMIT 1;";
+        String sql = (playerId != null) ?
+                "SELECT * FROM jumps WHERE `player_id`=? AND `name`=? LIMIT 1;" :
+                "SELECT * FROM jumps WHERE `player_id` IS NULL AND `name`=? LIMIT 1;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, playerUuid.toString());
-            ps.setString(2, name);
+            if (playerId != null) {
+                ps.setInt(1, playerId);
+                ps.setString(2, name);
+            } else {
+                ps.setString(1, name);
+            }
             ResultSet rs = ps.executeQuery();
-            
             // Return a new jump record or null if no results
             return rs.next() ? new JumpRecord(rs) : null;
         } catch (SQLException e) {
-            DBManager.logSevere("Failed to fetch jump record:\n"+e.toString());
+            DBManager.logSevere("Failed to fetch jump record");
+            e.printStackTrace();
             return null;
         }
     }
@@ -206,25 +220,30 @@ public class JumpRecord {
      * Gets a list of jump records belonging to the player where the jump name is "like"
      * the name given (as in SQL LIKE '%name%'), ordered alphabetically; useful for search.
      * Logs errors.
-     * @param  playerUuid UUID of the player to which the jump record belongs.
+     * @param  playerId Database ID of the player to which the jump record belongs (null if public).
      * @param  name Jump name to search for.
      * @return List of all JumpRecords belonging to the player and matching name, or null on error.
      */
-    public static List<JumpRecord> loadLikeName(UUID playerUuid, String name) {
+    public static List<JumpRecord> loadLikeName(Integer playerId, String name) {
         // Get database connection
         Connection conn = DBManager.getConnection();
         if (conn == null) return null;
         
         // Create select statement
-        final String sql = "SELECT * FROM jumps "+
-                "WHERE `player_uuid`=? AND `name` LIKE ? ORDER BY `name`;";
+        String sql = (playerId != null) ?
+                "SELECT * FROM jumps WHERE `player_id`=? AND `name` LIKE ? ORDER BY `name`;" :
+                "SELECT * FROM jumps WHERE `player_id` IS NULL AND `name` LIKE ? ORDER BY `name`;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, playerUuid.toString());
-            ps.setString(2, "%"+name+"%");
+            if (playerId != null) {
+                ps.setObject(1, playerId, Types.INTEGER);
+                ps.setString(2, "%" + name + "%");
+            } else {
+                ps.setString(1, "%" + name + "%");
+            }
             ResultSet rs = ps.executeQuery();
             
-            // Get JumpRecords from the result set and return
+            // Get jump records from the result set and return
             List<JumpRecord> jumpRecords = new ArrayList<>();
             while (rs.next())
                 jumpRecords.add(new JumpRecord(rs));
@@ -248,11 +267,11 @@ public class JumpRecord {
         if (id != null) {
             // Create update statement
             final String updateSql = "UPDATE jumps SET "+
-                    "`player_uuid`=?,`name`=?,`world_uuid`=?,`x`=?,`y`=?,`z`=?,`yaw`=? "+
+                    "`player_id`=?,`name`=?,`world_uuid`=?,`x`=?,`y`=?,`z`=?,`yaw`=? "+
                     "WHERE `id`=?;";
             try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
                 // Set parameters
-                ps.setString(1, playerUuid.toString());
+                ps.setObject(1, playerId, Types.INTEGER);
                 ps.setString(2, name);
                 ps.setString(3, worldUuid.toString());
                 ps.setDouble(4, x);
@@ -272,12 +291,12 @@ public class JumpRecord {
         else {
             // Create insert statement
             final String insertSql = "INSERT INTO jumps "+
-                    "(`player_uuid`,`name`,`world_uuid`,`x`,`y`,`z`,`yaw`) "+
+                    "(`player_id`,`name`,`world_uuid`,`x`,`y`,`z`,`yaw`) "+
                     "VALUES (?,?,?,?,?,?,?);";
             try (PreparedStatement ps = conn.prepareStatement(
                     insertSql, Statement.RETURN_GENERATED_KEYS)) {
                 // Set parameters
-                ps.setString(1, playerUuid.toString());
+                ps.setObject(1, playerId, Types.INTEGER);
                 ps.setString(2, name);
                 ps.setString(3, worldUuid.toString());
                 ps.setDouble(4, x);
@@ -285,8 +304,8 @@ public class JumpRecord {
                 ps.setDouble(6, z);
                 ps.setFloat(7, yaw);
                 
-                // Execute statement, returning if failed
-                if (ps.executeUpdate() == 0) return false;
+                // Execute statement, throwing exception if failed
+                if (ps.executeUpdate() == 0)  throw new SQLException("Failed to insert");
                 
                 // Set id to the generated key
                 ResultSet rs = ps.getGeneratedKeys();
