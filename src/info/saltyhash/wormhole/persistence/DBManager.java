@@ -280,8 +280,6 @@ public final class DBManager {
         
         /* </Create Tables> */
         
-        if (true) return;
-        
         /* <Pre-1.4.0 Database Import> */
         
         // Check for old pre-1.4.0 database file
@@ -406,19 +404,19 @@ public final class DBManager {
             
             // Insert old database players into the new database
             logInfo(logPrefix+"Adding players to new database");
+            Map<String, Integer> playerUsernamesToIds = new HashMap<>();
             try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO players (`uuid`,`username`) VALUES (?,?);")) {
+                    "INSERT INTO players (`uuid`,`username`) VALUES (?,?);",
+                    Statement.RETURN_GENERATED_KEYS)) {
                 for (String playerUsername : oldDbPlayerUsernames) {
                     UUID playerUuid = serverPlayerUsernamesToUuids.get(playerUsername);
                     ps.setString(1, playerUuid.toString());
                     ps.setString(2, playerUsername);
-                    ps.addBatch();
-                }
-                // Execute batch insert and make sure all succeeded
-                for (int result : ps.executeBatch()) {
-                    if (result < 1) {
+                    if (ps.executeUpdate() < 1)
                         throw new SQLException("Failed to insert player from old database into new");
-                    }
+                    ResultSet rs = ps.getGeneratedKeys();
+                    if (!rs.next()) throw new SQLException("Failed to get generated key");
+                    playerUsernamesToIds.put(playerUsername, rs.getInt(1));
                 }
             }
             
@@ -426,41 +424,33 @@ public final class DBManager {
             logInfo(logPrefix+"Adding jumps to new database");
             Map<String, Integer> jumpNamesToIds = new HashMap<>();
             try (PreparedStatement ps = conn.prepareStatement("INSERT INTO jumps "+
-                    "(`player_uuid`,`name`,`world_uuid`,`x`,`y`,`z`,`yaw`)"+
+                    "(`player_id`,`name`,`world_uuid`,`x`,`y`,`z`,`yaw`)"+
                     "VALUES (?,?,?,?,?,?,?);", Statement.RETURN_GENERATED_KEYS)) {
                 for (Map<String, Object> oldDbJump : oldDbJumps) {
-                    // Get player UUID
+                    // Get player ID
                     String playerUsername = (String) oldDbJump.get("player_name");
-                    UUID   playerUuid;
-                    // - Public jump?
-                    if (playerUsername.equals(""))
-                        playerUuid = null;
-                    else
-                        playerUuid = serverPlayerUsernamesToUuids.get(playerUsername);
+                    Integer playerId = playerUsername.equals("") ? null :
+                            playerUsernamesToIds.get(playerUsername);
                     // Get jump name
                     String jumpName = (String) oldDbJump.get("jump_name");
                     // Get world UUID
                     String worldName = (String) oldDbJump.get("world_name");
                     UUID   worldUuid = serverWorldNamesToUuids.get(worldName);
                     // Set parameters and execute
-                    ps.setString(1, playerUuid.toString());
+                    ps.setObject(1, playerId, Types.INTEGER);
                     ps.setString(2, jumpName);
                     ps.setString(3, worldUuid.toString());
                     ps.setDouble(4, (double) oldDbJump.get("x"));
                     ps.setDouble(5, (double) oldDbJump.get("y"));
                     ps.setDouble(6, (double) oldDbJump.get("z"));
                     ps.setFloat (7,  (float) oldDbJump.get("yaw"));
-                    if (ps.executeUpdate() < 1) {
+                    if (ps.executeUpdate() < 1)
                         throw new SQLException("Failed to insert jump from old database into new");
-                    }
                     // Get the new ID of the inserted jump
                     ResultSet rs = ps.getGeneratedKeys();
-                    if (rs.next()) {
-                        String key = playerUsername+"\n"+jumpName;
-                        jumpNamesToIds.put(key, rs.getInt(1));
-                    } else {
-                        throw new SQLException("Failed to get generated jump ID");
-                    }
+                    if (!rs.next()) throw new SQLException("Failed to get generated jump ID");
+                    String key = playerUsername+"\n"+jumpName;
+                    jumpNamesToIds.put(key, rs.getInt(1));
                     rs.close();
                 }
             }
