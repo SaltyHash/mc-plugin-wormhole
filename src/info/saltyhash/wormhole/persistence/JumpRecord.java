@@ -217,6 +217,45 @@ public class JumpRecord {
     }
     
     /**
+     * Gets a list of jump records belonging to the player where the jump name begins with
+     * the name given (as in SQL LIKE 'name%'), ordered alphabetically; useful for tab completion.
+     * Logs errors.
+     * @param  playerId Database ID of the player to which the jump record belongs (null if public).
+     * @param  name Jump name to search for.
+     * @return List of all JumpRecords that begin with name and belong to player, or null on error.
+     */
+    public static List<JumpRecord> loadWhereNameBeginsWith(Integer playerId, String name) {
+        // Get database connection
+        Connection conn = DBManager.getConnection();
+        if (conn == null) return null;
+        
+        // Create select statement
+        String sql = (playerId != null) ?
+                "SELECT * FROM jumps WHERE `player_id`=? AND `name` LIKE ? ORDER BY `name`;" :
+                "SELECT * FROM jumps WHERE `player_id` IS NULL AND `name` LIKE ? ORDER BY `name`;";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            // Set statement parameters and execute
+            if (playerId != null) {
+                ps.setObject(1, playerId, Types.INTEGER);
+                ps.setString(2, name + "%");
+            } else {
+                ps.setString(1, name + "%");
+            }
+            ResultSet rs = ps.executeQuery();
+            
+            // Get jump records from the result set and return
+            List<JumpRecord> jumpRecords = new ArrayList<>();
+            while (rs.next())
+                jumpRecords.add(new JumpRecord(rs));
+            return jumpRecords;
+        } catch (SQLException e) {
+            DBManager.logSevere("Failed to fetch jump records");
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
      * Gets a list of jump records belonging to the player where the jump name is "like"
      * the name given (as in SQL LIKE '%name%'), ordered alphabetically; useful for search.
      * Logs errors.
@@ -224,7 +263,7 @@ public class JumpRecord {
      * @param  name Jump name to search for.
      * @return List of all JumpRecords belonging to the player and matching name, or null on error.
      */
-    public static List<JumpRecord> loadLikeName(Integer playerId, String name) {
+    public static List<JumpRecord> loadWhereNameLike(Integer playerId, String name) {
         // Get database connection
         Connection conn = DBManager.getConnection();
         if (conn == null) return null;

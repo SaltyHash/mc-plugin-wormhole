@@ -520,7 +520,8 @@ class WormholeCommandHandler implements CommandExecutor {
                 return;
             }
             // Set player ID
-            playerId = playerRecord.getId();
+            playerId   = playerRecord.getId();
+            playerName = playerRecord.username;
         }
         
         // Get list of jump records
@@ -884,7 +885,7 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         
         // Get list of jump records
-        List<JumpRecord> jumpRecords = JumpRecord.loadLikeName(playerId, jumpName);
+        List<JumpRecord> jumpRecords = JumpRecord.loadWhereNameLike(playerId, jumpName);
         // Unknown error?
         if (jumpRecords == null) {
             player.sendMessage(ERROR_MSG_PREFIX+"internal error");
@@ -1164,7 +1165,7 @@ class WormholeCommandHandler implements CommandExecutor {
      * and 1) the jump name, or null on parse error.
      * Format: [player | public] <jump name>
      */
-    private String[] getJumpInfoFromArgs(Player player, String[] args) {
+    static String[] getJumpInfoFromArgs(Player player, String[] args) {
         String playerName;
         String jumpName;
         
@@ -1210,43 +1211,39 @@ class WormholeCommandHandler implements CommandExecutor {
     
     /** Called when a command is issued. */
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        String cmdName = cmd.getName().toLowerCase();
+    public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
+        // Return if command is not "/wormhole ..."
+        if (!command.getName().equalsIgnoreCase("wormhole")) return false;
         
-        if (cmdName.equals("wormhole")) {
-            // Get action and args
-            String action;
-            try {
-                // Get action
-                action = args[0].toLowerCase();
-                // Cut off first arg (it was used to get action)
-                args = Arrays.copyOfRange(args, 1, args.length);
-            }
-            catch (ArrayIndexOutOfBoundsException e) {
-                return false;
-            }
-            
-            // Give action to appropriate handler function
-            switch (action) {
-                case "add"    : commandAdd(sender, args);     break;
-                case "back"   : commandBack(sender);          break;
-                case "cost"   : commandCost(sender);          break;
-                case "delete" : commandDelete(sender, args);  break;
-                case "jump"   : commandJump(sender, args);    break;
-                case "list"   : commandList(sender, args);    break;
-                case "reload" : commandReload(sender);        break;
-                case "rename" : commandRename(sender, args);  break;
-                case "replace": commandReplace(sender, args); break;
-                case "search" : commandSearch(sender, args);  break;
-                case "set"    : commandSet(sender, args);     break;
-                case "unset"  : commandUnset(sender);         break;
-                case "version": commandVersion(sender);       break;
-                default:
-                    sender.sendMessage(ChatColor.DARK_RED+"Unrecognized command");
-            }
-            return true;
+        // Get sub-command and args
+        String subcommand;
+        try {
+            // Get action
+            subcommand = args[0].toLowerCase();
+            // Cut off first arg (it was used to get action)
+            args = Arrays.copyOfRange(args, 1, args.length);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return false;
         }
         
-        return false;
+        // Give action to appropriate handler function
+        switch (subcommand) {
+            case "add"    : commandAdd(sender, args);     break;
+            case "back"   : commandBack(sender);          break;
+            case "cost"   : commandCost(sender);          break;
+            case "delete" : commandDelete(sender, args);  break;
+            case "jump"   : commandJump(sender, args);    break;
+            case "list"   : commandList(sender, args);    break;
+            case "reload" : commandReload(sender);        break;
+            case "rename" : commandRename(sender, args);  break;
+            case "replace": commandReplace(sender, args); break;
+            case "search" : commandSearch(sender, args);  break;
+            case "set"    : commandSet(sender, args);     break;
+            case "unset"  : commandUnset(sender);         break;
+            case "version": commandVersion(sender);       break;
+            default:
+                sender.sendMessage(ChatColor.DARK_RED+"Unrecognized command");
+        }
+        return true;
     }
 }

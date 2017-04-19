@@ -57,10 +57,10 @@ public class Wormhole extends JavaPlugin {
         PlayerManager.setup(this);
         EconManager.setup(this);
         
-        // Register event handler and command handler
-        getServer().getPluginManager().registerEvents(
-                new WormholeEventHandler(this), this);
+        // Register event handler, command handler, and tab completer
+        getServer().getPluginManager().registerEvents(new WormholeEventHandler(this), this);
         getCommand("wormhole").setExecutor(new WormholeCommandHandler(this));
+        getCommand("wormhole").setTabCompleter(new WormholeTabCompleter());
         
         getLogger().info("Enabled");
     }
