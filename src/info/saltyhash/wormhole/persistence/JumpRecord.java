@@ -2,7 +2,6 @@ package info.saltyhash.wormhole.persistence;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
@@ -12,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 /** Represents a row in the database table 'jumps'. */
-//@SuppressWarnings("WeakerAccess")
+@SuppressWarnings("WeakerAccess")
 public class JumpRecord {
     public Integer id;          // Primary key
     public Integer playerId;    // Foreign key to players.id. Unique with name. null ==> public.
@@ -41,7 +40,7 @@ public class JumpRecord {
         this.id        = rs.getInt("id");
         this.playerId  = (Integer) rs.getObject("player_id");
         this.name      = rs.getString("name");
-        this.worldUuid = UUID.fromString(rs.getString("world_uuid"));
+        this.worldUuid = DBManager.BytesToUuid(rs.getBytes("world_uuid"));
         this.x         = rs.getDouble("x");
         this.y         = rs.getDouble("y");
         this.z         = rs.getDouble("z");
@@ -312,7 +311,7 @@ public class JumpRecord {
                 // Set parameters
                 ps.setObject(1, playerId, Types.INTEGER);
                 ps.setString(2, name);
-                ps.setString(3, worldUuid.toString());
+                ps.setBytes(3, DBManager.UuidToBytes(worldUuid));
                 ps.setDouble(4, x);
                 ps.setDouble(5, y);
                 ps.setDouble(6, z);
@@ -337,7 +336,7 @@ public class JumpRecord {
                 // Set parameters
                 ps.setObject(1, playerId, Types.INTEGER);
                 ps.setString(2, name);
-                ps.setString(3, worldUuid.toString());
+                ps.setBytes(3, DBManager.UuidToBytes(worldUuid));
                 ps.setDouble(4, x);
                 ps.setDouble(5, y);
                 ps.setDouble(6, z);

@@ -30,7 +30,7 @@ public class SignRecord {
     
     private SignRecord(ResultSet rs) throws SQLException {
         this.id        = rs.getInt("id");
-        this.worldUuid = UUID.fromString(rs.getString("world_uuid"));
+        this.worldUuid = DBManager.BytesToUuid(rs.getBytes("world_uuid"));
         this.x         = rs.getInt("x");
         this.y         = rs.getInt("y");
         this.z         = rs.getInt("z");
@@ -77,7 +77,7 @@ public class SignRecord {
                 "`world_uuid`=? AND `x`=? AND `y`=? AND `z`=? LIMIT 1;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, worldUuid.toString());
+            ps.setBytes(1, DBManager.UuidToBytes(worldUuid));
             ps.setInt(2, x);
             ps.setInt(3, y);
             ps.setInt(4, z);
@@ -112,7 +112,7 @@ public class SignRecord {
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 // Set statement parameters and execute, returning success
                 ps.setInt(1, jumpId);
-                ps.setString(2, worldUuid.toString());
+                ps.setBytes(2, DBManager.UuidToBytes(worldUuid));
                 ps.setInt(3, x);
                 ps.setInt(4, y);
                 ps.setInt(5, z);
@@ -131,7 +131,7 @@ public class SignRecord {
             try (PreparedStatement ps = conn.prepareStatement(
                     sql, Statement.RETURN_GENERATED_KEYS)) {
                 // Set statement parameters and execute, returning success or failure
-                ps.setString(1, worldUuid.toString());
+                ps.setBytes(1, DBManager.UuidToBytes(worldUuid));
                 ps.setInt(2, x);
                 ps.setInt(3, y);
                 ps.setInt(4, z);

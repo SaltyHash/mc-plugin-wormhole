@@ -25,7 +25,7 @@ public class PlayerRecord {
     
     private PlayerRecord(ResultSet rs) throws SQLException {
         this.id       = rs.getInt("id");
-        this.uuid     = UUID.fromString(rs.getString("uuid"));
+        this.uuid     = DBManager.BytesToUuid(rs.getBytes("uuid"));
         this.username = rs.getString("username");
     }
     
@@ -60,7 +60,7 @@ public class PlayerRecord {
     
     /** Returns the player corresponding to this record, or null if they are not logged in. */
     @SuppressWarnings("unused")
-    public Player getPlayer() { return Bukkit.getServer().getPlayer(uuid); }
+    public Player getPlayer() { return Bukkit.getPlayer(uuid); }
     
     /** Returns true if the player UUID matches the player record UUID. */
     public boolean isPlayer(Player player) {
@@ -106,7 +106,7 @@ public class PlayerRecord {
         final String sql = "SELECT * FROM players WHERE `uuid`=? LIMIT 1;";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             // Set statement parameters and execute
-            ps.setString(1, uuid.toString());
+            ps.setBytes(1, DBManager.UuidToBytes(uuid));
             ResultSet rs = ps.executeQuery();
         
             // Return a new player record or null if there are no results
@@ -156,7 +156,7 @@ public class PlayerRecord {
             final String sql = "UPDATE players SET `uuid`=?,`username`=? WHERE `id`=?;";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 // Set statement parameters and execute, returning success
-                ps.setString(1, uuid.toString());
+                ps.setBytes(1, DBManager.UuidToBytes(uuid));
                 ps.setString(2, username);
                 ps.setInt(3, id);
                 return (ps.executeUpdate() > 0);
@@ -172,11 +172,11 @@ public class PlayerRecord {
             try (PreparedStatement ps = conn.prepareStatement(
                     sql, Statement.RETURN_GENERATED_KEYS)) {
                 // Set statement parameters and execute, returning success or failure
-                ps.setString(1, uuid.toString());
+                ps.setBytes(1, DBManager.UuidToBytes(uuid));
                 ps.setString(2, username);
                 
                 // Execute statement, throwing exception if failed
-                if (ps.executeUpdate() == 0)  throw new SQLException("Failed to insert");
+                if (ps.executeUpdate() == 0) throw new SQLException("Failed to insert");
                 
                 // Set id to the generated key
                 ResultSet rs = ps.getGeneratedKeys();

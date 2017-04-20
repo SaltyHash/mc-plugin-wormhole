@@ -7,6 +7,7 @@ import org.bukkit.World;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.sql.*;
 import java.util.*;
 import java.util.logging.Logger;
@@ -154,6 +155,18 @@ public final class DBManager {
         return true;    // Success
     }
     
+    static UUID BytesToUuid(byte[] bytes) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        long msb = bb.getLong(); long lsb = bb.getLong();
+        return new UUID(msb, lsb);
+    }
+    static byte[] UuidToBytes(UUID uuid) {
+        return ByteBuffer.allocate(16).putLong(uuid.getMostSignificantBits()).putLong(
+                uuid.getLeastSignificantBits()).array();
+    }
+    
+    /* <Migrations */
+    
     /**
      * Migrates the database to the latest version.
      * @return true on success; false on failure.
@@ -229,8 +242,6 @@ public final class DBManager {
         return true;
     }
     
-    /* <Migrations> */
-    
     /** Migrates to database version from previous.  Logs errors. */
     @SuppressWarnings("unused")
     private static void migration0(Connection conn, String logPrefix)
@@ -248,7 +259,7 @@ public final class DBManager {
             logInfo(logPrefix+"Creating table 'players'");
             s.execute("CREATE TABLE players (\n" +
                     "  `id`       INTEGER PRIMARY KEY,\n" +
-                    "  `uuid`     CHAR(36) NOT NULL UNIQUE,\n" +
+                    "  `uuid`     BINARY(16) NOT NULL UNIQUE,\n" +
                     "  `username` VARCHAR(16) NOT NULL);");
             
             // Create table 'jumps'
@@ -258,7 +269,7 @@ public final class DBManager {
                     "  `player_id`  INTEGER REFERENCES players(`id`)\n" +
                     "               ON DELETE CASCADE ON UPDATE CASCADE,\n" +
                     "  `name`       VARCHAR(100) NOT NULL,\n" +
-                    "  `world_uuid` CHAR(36) NOT NULL,\n" +
+                    "  `world_uuid` BINARY(16) NOT NULL,\n" +
                     "  `x` DOUBLE PRECISION NOT NULL,\n" +
                     "  `y` DOUBLE PRECISION NOT NULL,\n" +
                     "  `z` DOUBLE PRECISION NOT NULL,\n" +
@@ -269,7 +280,7 @@ public final class DBManager {
             logInfo(logPrefix+"Creating table 'signs'");
             s.execute("CREATE TABLE signs (\n" +
                     "  `id` INTEGER PRIMARY KEY,\n" +
-                    "  `world_uuid` CHAR(36) NOT NULL,\n" +
+                    "  `world_uuid` BINARY(16) NOT NULL,\n" +
                     "  `x` INTEGER NOT NULL,\n" +
                     "  `y` INTEGER NOT NULL,\n" +
                     "  `z` INTEGER NOT NULL,\n" +
@@ -283,10 +294,9 @@ public final class DBManager {
         /* <Pre-1.4.0 Database Import> */
         
         // Check for old pre-1.4.0 database file
-        File oldDbFile = new File(dbFile.getParent()+File.separator+"Wormhole.sqlite.db");
+        File oldDbFile = new File(dbFile.getParent() + File.separator + "Wormhole.sqlite.db");
         if (oldDbFile.exists()) {
-            logInfo(logPrefix+"Pre-1.4.0 database found; importing into new database "+
-                    "(this could take a minute)");
+            logInfo(logPrefix + "Pre-1.4.0 database found; importing into new database");
             
             // Get list of players from the server
             OfflinePlayer[] players = Bukkit.getOfflinePlayers();
@@ -297,7 +307,7 @@ public final class DBManager {
             Map<String, UUID> serverPlayerUsernamesToUuids = new HashMap<>(players.length);
             for (OfflinePlayer player : players) {
                 if (player.getUniqueId() == null) {
-                    logWarning(logPrefix+"Player '"+player.getName()+
+                    logWarning(logPrefix + "Player '" + player.getName() +
                             "' does not have UUID; moving on...");
                     continue;
                 }
@@ -389,28 +399,29 @@ public final class DBManager {
             for (String oldDbUsername : oldDbPlayerUsernames) {
                 if (!oldDbUsername.equals("") &&
                         !serverPlayerUsernamesToUuids.keySet().contains(oldDbUsername)) {
-                    throw new IllegalStateException("Server does not have player '"
-                            +oldDbUsername+"' found in the old database");
+                    throw new IllegalStateException("Server does not have player '" +
+                            oldDbUsername + "' found in the old database");
                 }
             }
             
             // Make sure old database world names exist in server
             for (String oldDbWorldName : oldDbWorldNames) {
                 if (!serverWorldNamesToUuids.keySet().contains(oldDbWorldName)) {
-                    throw new IllegalStateException("Server does not have world '"+
-                            oldDbWorldName+"' found in the old database");
+                    throw new IllegalStateException("Server does not have world '" +
+                            oldDbWorldName + "' found in the old database");
                 }
             }
             
             // Insert old database players into the new database
-            logInfo(logPrefix+"Adding players to new database");
+            logInfo(logPrefix + "Adding " + oldDbPlayerUsernames.size() +
+                    " players to new database");
             Map<String, Integer> playerUsernamesToIds = new HashMap<>();
             try (PreparedStatement ps = conn.prepareStatement(
                     "INSERT INTO players (`uuid`,`username`) VALUES (?,?);",
                     Statement.RETURN_GENERATED_KEYS)) {
                 for (String playerUsername : oldDbPlayerUsernames) {
                     UUID playerUuid = serverPlayerUsernamesToUuids.get(playerUsername);
-                    ps.setString(1, playerUuid.toString());
+                    ps.setBytes(1, UuidToBytes(playerUuid));
                     ps.setString(2, playerUsername);
                     if (ps.executeUpdate() < 1)
                         throw new SQLException("Failed to insert player from old database into new");
@@ -421,7 +432,7 @@ public final class DBManager {
             }
             
             // Insert old database jumps into the new database
-            logInfo(logPrefix+"Adding jumps to new database");
+            logInfo(logPrefix+"Adding " + oldDbJumps.size() + " jumps to new database");
             Map<String, Integer> jumpNamesToIds = new HashMap<>();
             try (PreparedStatement ps = conn.prepareStatement("INSERT INTO jumps "+
                     "(`player_id`,`name`,`world_uuid`,`x`,`y`,`z`,`yaw`)"+
@@ -439,7 +450,7 @@ public final class DBManager {
                     // Set parameters and execute
                     ps.setObject(1, playerId, Types.INTEGER);
                     ps.setString(2, jumpName);
-                    ps.setString(3, worldUuid.toString());
+                    ps.setBytes(3, UuidToBytes(worldUuid));
                     ps.setDouble(4, (double) oldDbJump.get("x"));
                     ps.setDouble(5, (double) oldDbJump.get("y"));
                     ps.setDouble(6, (double) oldDbJump.get("z"));
@@ -456,7 +467,7 @@ public final class DBManager {
             }
             
             // Insert old database signs into the new database
-            logInfo(logPrefix+"Adding signs to new database");
+            logInfo(logPrefix+"Adding " + oldDbSigns.size() + " signs to new database");
             try (PreparedStatement ps = conn.prepareStatement("INSERT INTO signs "+
                     "(`world_uuid`,`x`,`y`,`z`,`jump_id`) VALUES (?,?,?,?,?);")) {
                 for (Map<String, Object> oldDbSign : oldDbSigns) {
@@ -469,7 +480,7 @@ public final class DBManager {
                     String worldName = (String) oldDbSign.get("world_name");
                     UUID   worldUuid = serverWorldNamesToUuids.get(worldName);
                     // Set parameters and add to batch
-                    ps.setString(1, worldUuid.toString());
+                    ps.setBytes(1, UuidToBytes(worldUuid));
                     ps.setInt(2, (int) oldDbSign.get("x"));
                     ps.setInt(3, (int) oldDbSign.get("y"));
                     ps.setInt(4, (int) oldDbSign.get("z"));
