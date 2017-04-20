@@ -17,3 +17,7 @@ effects:
   ring:  false
   smoke: true
   sound: true
+
+# List of worlds where using Wormhole is not allowed
+world_blacklist:
+  -

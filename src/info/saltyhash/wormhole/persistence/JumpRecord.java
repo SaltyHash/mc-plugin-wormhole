@@ -2,6 +2,7 @@ package info.saltyhash.wormhole.persistence;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
@@ -119,6 +120,11 @@ public class JumpRecord {
     /** Returns the player record to which the jump record belongs, or null if public. */
     public PlayerRecord getPlayerRecord() {
         return (playerId != null) ? PlayerRecord.load(playerId) : null;
+    }
+    
+    /** Returns the world that the jump resides in. */
+    public World getWorld() {
+        return Bukkit.getWorld(worldUuid);
     }
     
     public boolean isPublic() {

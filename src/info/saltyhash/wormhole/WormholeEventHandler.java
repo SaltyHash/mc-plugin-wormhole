@@ -19,7 +19,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 
 /** Handles events for Wormhole. */
 class WormholeEventHandler implements Listener {
-    private final Wormhole    wormhole;
+    private final Wormhole wormhole;
     
     WormholeEventHandler(Wormhole wormhole) {
         this.wormhole = wormhole;
@@ -32,20 +32,27 @@ class WormholeEventHandler implements Listener {
         if (signRecord == null) return;
         
         // Get jump related to this sign
-        JumpRecord jump = signRecord.getJumpRecord();
+        JumpRecord jumpRecord = signRecord.getJumpRecord();
         
         // Cancel interact event
         event.setCancelled(true);
         
+        // Player is in blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName()))
+            return;
+        // Jump is in blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, jumpRecord.getWorld().getName()))
+            return;
+        
         // Check permissions
-        if (jump.isPublic()) {
+        if (jumpRecord.isPublic()) {
             if (!player.hasPermission("wormhole.use.public")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot use signs pointing to public jumps");
                 return;
             }
         }
-        else if (jump.belongsTo(player)) {
+        else if (jumpRecord.belongsTo(player)) {
             if (!player.hasPermission("wormhole.use.private")) {
                 player.sendMessage(ChatColor.DARK_RED+
                     "You cannot use signs pointing to your jumps");
@@ -71,18 +78,18 @@ class WormholeEventHandler implements Listener {
         Location from = player.getLocation();
         
         // Teleport player failed?
-        if (!jump.teleportPlayer(player)) {
+        if (!jumpRecord.teleportPlayer(player)) {
             player.sendMessage(ChatColor.DARK_RED + "Failed to jump;" + ChatColor.RESET +
                     " unknown reason");
             wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to jump to %s; unknown reason",
-                player.getName(), jump.getDescription()));
+                player.getName(), jumpRecord.getDescription()));
             return;
         }
         
         // Notify player of where they just jumped to
         player.sendMessage(ChatColor.DARK_PURPLE+"Jumped"+ChatColor.RESET+
-                " to "+jump.getDescription(player));
+                " to "+jumpRecord.getDescription(player));
         
         // Play teleport effect
         wormhole.playTeleportEffect(from);
@@ -111,8 +118,14 @@ class WormholeEventHandler implements Listener {
         JumpRecord jump = signRecord.getJumpRecord();
         if (jump == null) return;   // TODO: This should never happen
         
-        // Make sure player can afford this action
+        // Player is in blacklisted world?
         Player player = event.getPlayer();
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName())) {
+            event.setCancelled(true);
+            return;
+        }
+        
+        // Make sure player can afford this action
         if (!player.hasPermission("wormhole.free")
                 && !EconManager.hasBalance(player, "unset")) {
             player.sendMessage(ChatColor.DARK_RED+

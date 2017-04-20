@@ -82,6 +82,9 @@ permissions:
       wormhole.free:
         description: Exept from being charged to use Wormhole
         default: op
+      wormhole.ignore_world_blacklist:
+        description: Allows player to use Wormhole in blacklisted worlds
+        default: op
       wormhole.jump.*:
         description: Jump directly to any type of jump
         children:

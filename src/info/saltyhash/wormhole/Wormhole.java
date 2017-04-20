@@ -76,6 +76,20 @@ public class Wormhole extends JavaPlugin {
         getServer().getPluginManager().disablePlugin(this);
     }
     
+    /** If the world is blacklisted and the player does not have the permission
+     * "ignore_world_blacklist", then the player is notified, and the function returns true.
+     * @return true if world is blacklisted for the player; false otherwise.
+     */
+    boolean notifyPlayerIfWorldIsBlacklisted(
+            Player player, String worldName) {
+        if (worldIsBlacklisted(worldName) &&
+                !player.hasPermission("wormhole.ignore_world_blacklist")) {
+            player.sendMessage("Sorry, Wormhole is disabled for world '" + worldName + "'");
+            return true;
+        }
+        return false;
+    }
+    
     void playTeleportEffect(Location location) {
         /* Plays the teleport effect at the given location. */
         World world = location.getWorld();
@@ -101,5 +115,10 @@ public class Wormhole extends JavaPlugin {
                 world.playEffect(ringLocation, Effect.ENDER_SIGNAL, 0);
             }
         }
+    }
+    
+    @SuppressWarnings("WeakerAccess")
+    boolean worldIsBlacklisted(String worldName) {
+        return getConfig().getStringList("world_blacklist").contains(worldName);
     }
 }

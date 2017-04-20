@@ -7,10 +7,7 @@ import java.util.Set;
 import info.saltyhash.wormhole.persistence.JumpRecord;
 import info.saltyhash.wormhole.persistence.PlayerRecord;
 import info.saltyhash.wormhole.persistence.SignRecord;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.command.Command;
@@ -43,6 +40,9 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         Player player = (Player)sender;
+        
+        // Player is in blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName())) return;
         
         // Get jump info from args
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
@@ -136,6 +136,9 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         Player player = (Player)sender;
+        
+        // Player is in a blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName())) return;
         
         // Check permissions
         if (!player.hasPermission("wormhole.back")) {
@@ -331,6 +334,9 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
+        // Player is in blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName())) return;
+        
         // Get jump info from args
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
@@ -402,6 +408,9 @@ class WormholeCommandHandler implements CommandExecutor {
                 player.sendMessage("Did you mean \"public " + jumpName + "\"?");
             return;
         }
+        
+        // Jump destination is in a blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, jumpRecord.getWorld().getName())) return;
         
         Location from = player.getLocation();
         
@@ -742,6 +751,9 @@ class WormholeCommandHandler implements CommandExecutor {
         }
         Player player = (Player)sender;
         
+        // Player is in blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName())) return;
+        
         // Get jump info from args
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
@@ -942,7 +954,10 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         Player player = (Player)sender;
-    
+        
+        // Player is in blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName())) return;
+        
         // Get jump info from args
         String[] jumpInfo = getJumpInfoFromArgs(player, args);
         // Parse error?
@@ -1002,24 +1017,28 @@ class WormholeCommandHandler implements CommandExecutor {
         
         // Get the jump record
         JumpRecord jumpRecord = JumpRecord.load(playerId, jumpName);
-        // Jump does nt exist?
+        // Jump does not exist?
         if (jumpRecord == null) {
-            player.sendMessage(ERROR_MSG_PREFIX+"jump "+
-                    JumpRecord.getDescription(player, playerName, jumpName)+" does not exist");
+            player.sendMessage(ERROR_MSG_PREFIX + "jump " +
+                    JumpRecord.getDescription(player, playerName, jumpName) + " does not exist");
             return;
         }
+        
+        // Jump destination is in a blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, jumpRecord.getWorld().getName())) return;
     
         // Get sign block
         Block target = player.getTargetBlock((Set<Material>) null, 4);
         if (target == null || !(target.getState() instanceof Sign)) {
-            player.sendMessage(ERROR_MSG_PREFIX+"you must be looking at a sign");
+            player.sendMessage(ERROR_MSG_PREFIX + "you must be looking at a sign");
             return;
         }
         Sign sign = (Sign) target.getState();
         
         // Sign is already pointing to a jump?
         if (SignRecord.load(sign) != null) {
-            player.sendMessage(ERROR_MSG_PREFIX+"sign is already set");
+            player.sendMessage(ERROR_MSG_PREFIX + "sign is already set.\n" +
+                    "Use command \"/worm unset\" to unset the sign.");
             return;
         }
         
@@ -1054,6 +1073,9 @@ class WormholeCommandHandler implements CommandExecutor {
             return;
         }
         Player player = (Player)sender;
+        
+        // Player is in blacklisted world?
+        if (wormhole.notifyPlayerIfWorldIsBlacklisted(player, player.getWorld().getName())) return;
         
         // Get target block
         Block target = player.getTargetBlock((Set<Material>) null, 4);
@@ -1173,6 +1195,7 @@ class WormholeCommandHandler implements CommandExecutor {
      * Parses arguments and returns an array containing 0) the player name
      * and 1) the jump name, or null on parse error.
      * Format: [player | public] <jump name>
+     * @return [0] the player name (null if public), and [1] the jump name; null on parse error.
      */
     static String[] getJumpInfoFromArgs(Player player, String[] args) {
         String playerName;
