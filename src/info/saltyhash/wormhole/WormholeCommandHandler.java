@@ -34,7 +34,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm add [player | public] <jump name>
      */
     private void commandAdd(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to add jump; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to add jump; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
@@ -226,7 +227,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm delete [player | public] <jump name>
      */
     private void commandDelete(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to delete jump; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to delete jump; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
@@ -319,7 +321,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm jump [player | public] <jump name>
      */
     private void commandJump(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to jump; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to jump; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
@@ -426,7 +429,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage: /worm list [player | public] [page]
      */
     private void commandList(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to list jumps; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to list jumps; " + ChatColor.RESET;
         final int pageSize = 9;
         int page;
         String playerName;
@@ -602,7 +606,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm rename [player | public] <old name> <new name>
      */
     private void commandRename(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to rename jump; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to rename jump; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
@@ -727,7 +732,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm replace [player | public] <jump name>
      */
     private void commandReplace(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED + "Failed to replace jump; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to replace jump; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
@@ -826,7 +832,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm search [player | public] <jump name>
      */
     private void commandSearch(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to search for jump; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED+"Failed to search for jump; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
@@ -926,7 +933,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm set [player | public] <jump name>
      */
     private void commandSet(CommandSender sender, String[] args) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to set sign; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to set sign; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {
@@ -1037,7 +1045,8 @@ class WormholeCommandHandler implements CommandExecutor {
      * Usage:  /worm unset
      */
     private void commandUnset(CommandSender sender) {
-        final String ERROR_MSG_PREFIX = ChatColor.DARK_RED+"Failed to unset sign; ";
+        final String ERROR_MSG_PREFIX =
+                ChatColor.DARK_RED + "Failed to unset sign; " + ChatColor.RESET;
         
         // Make sure sender is a player
         if (!(sender instanceof Player)) {

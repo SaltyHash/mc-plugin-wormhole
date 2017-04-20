@@ -72,7 +72,8 @@ class WormholeEventHandler implements Listener {
         
         // Teleport player failed?
         if (!jump.teleportPlayer(player)) {
-            player.sendMessage(ChatColor.DARK_RED+"Failed to jump; unknown reason");
+            player.sendMessage(ChatColor.DARK_RED + "Failed to jump;" + ChatColor.RESET +
+                    " unknown reason");
             wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to jump to %s; unknown reason",
                 player.getName(), jump.getDescription()));
@@ -157,8 +158,8 @@ class WormholeEventHandler implements Listener {
         }
         // Failed?
         else {
-            player.sendMessage(ChatColor.DARK_RED+
-                "Failed to unset sign; unknown reason");
+            player.sendMessage(ChatColor.DARK_RED + "Failed to unset sign;" + ChatColor.RESET +
+                    " unknown reason");
             wormhole.getLogger().warning(String.format(
                 "Player \"%s\" failed to unset sign (%s, %d, %d, %d) "+
                 "pointing to jump %s; unknown reason",
