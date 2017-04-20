@@ -3,6 +3,7 @@ package info.saltyhash.wormhole.persistence;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Creature;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
@@ -374,12 +375,28 @@ public class JumpRecord {
     }
     
     /**
-     * Teleports the player to the jump location.
+     * Teleports the player (and creature if riding one) to the jump location.
      * @return true if teleport was successful.
      */
     public boolean teleportPlayer(Player player) {
+        // Get the jump location and load the chunk
         Location l = getLocation();
         l.getWorld().loadChunk((int)x, (int)z);
-        return player.teleport(l, PlayerTeleportEvent.TeleportCause.PLUGIN);
+        
+        // Player is not riding a creature?
+        if (!(player.getVehicle() instanceof Creature))
+            return player.teleport(l, PlayerTeleportEvent.TeleportCause.PLUGIN);
+        
+        // Player IS riding a creature?
+        else {
+            Creature creature = (Creature) player.getVehicle();
+            creature.removePassenger(player);
+            boolean teleportedCreature = creature.teleport(l,
+                    PlayerTeleportEvent.TeleportCause.PLUGIN);
+            boolean teleportedPlayer   = player.teleport(l,
+                    PlayerTeleportEvent.TeleportCause.PLUGIN);
+            creature.addPassenger(player);
+            return teleportedPlayer && teleportedCreature;
+        }
     }
 }
