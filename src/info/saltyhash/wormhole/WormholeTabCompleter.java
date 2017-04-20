@@ -22,7 +22,7 @@ class WormholeTabCompleter implements TabCompleter {
         // Return if command is not "/wormhole ..."
         if (!command.getName().equalsIgnoreCase("wormhole")) return null;
         
-        // Get sub-command and args
+        // Get subcommand and args
         String subcommand;
         try {
             // Get action
@@ -33,7 +33,20 @@ class WormholeTabCompleter implements TabCompleter {
             return null;
         }
         
-        // Return if sub-command does not support autocomplete
+        final List<String> subcommands = Arrays.asList("reload", "version", "add", "back",
+                "cost", "delete", "jump", "list", "rename", "replace", "search", "set", "unset");
+        // Subcommand is not in the list of subcommands?
+        if (!subcommands.contains(subcommand)) {
+            // Return list of subcommands starting with subcommand
+            List<String> autocomplete = new ArrayList<>();
+            for (String possibleSubcommand : subcommands) {
+                if (possibleSubcommand.startsWith(subcommand))
+                    autocomplete.add(possibleSubcommand);
+            }
+            return autocomplete;
+        }
+        
+        // Return if subcommand does not support autocomplete
         final List<String> autocompleteCommands = Arrays.asList(
                 "delete", "jump", "rename", "replace", "set");
         if (!autocompleteCommands.contains(subcommand)) return null;
