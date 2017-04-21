@@ -1,5 +1,5 @@
 name: Wormhole
-version: 1.3.4
+version: 1.4.0
 author: Austin Bowen <austin.bowen.314@gmail.com>
 main: info.saltyhash.wormhole.Wormhole
 softdepend: [Vault]
@@ -7,164 +7,170 @@ commands:
   wormhole:
     description: Display all Wormhole commands
     aliases: [worm]
-    usage: /<command> [add | back | cost | del | jump | list | rename | replace | set | unset]
+    usage: /worm [add | back | cost | delete | jump | list | rename | replace | search | set | unset]
   wormhole reload:
     description: Reload config
-    usage: /<command>
+    usage: /wormhole reload
   wormhole version:
     description: Display the Wormhole version
-    usage: /<command>
+    usage: /wormhole version
   worm add:
-    description: Create a new Jump
-    usage: /<command> [player | pub] <jump name>
+    description: Create a new jump
+    usage: /worm add [player | public] <jump name>
   worm back:
     description: Jump back to previous location
-    usage: /<command>
+    usage: /worm back
   worm cost:
     description: Displays the cost of all actions
-    usage: /<command>
-  worm del:
-    description: Delete a Jump
-    usage: /<command> [player | pub] <jump name>
+    usage: /worm cost
+  worm delete:
+    description: Delete a jump
+    usage: /worm delete [player | public] <jump name>
   worm jump:
-    description: Jump directly to a Jump
-    usage: /<command> [player | pub] <jump name>
+    description: Jump directly to a jump
+    usage: /worm jump [player | public] <jump name>
   worm list:
-    description: List Jumps
-    usage: /<command> [player | pub] [page]
+    description: List jumps
+    usage: /worm list [player | public] [page]
   worm rename:
-    description: Rename a Jump
-    usage: /<command> [player | pub] <old name> <new name>
+    description: Rename a jump
+    usage: /worm rename [player | public] <old name> <new name>
   worm replace:
-    description: Replace an existing Jump with the current location
-    usage: /<command> [player | pub] <jump name>
+    description: Replace an existing jump with the current location
+    usage: /worm replace [player | public] <jump name>
+  worm search:
+    description: Searches for jumps with a similar name
+    usage: /worm search [player | public] <jump name>
   worm set:
-    description: Set a sign to point to a Jump
-    usage: /<command> [player | pub] <jump name>
+    description: Set a sign to point to a jump
+    usage: /worm set [player | public] <jump name>
   worm unset:
-    description: Unset a sign pointing to a Jump
-    usage: /<command>
+    description: Unset a sign pointing to a jump
+    usage: /worm unset
 permissions:
   wormhole.*:
     description: Gives all permissions for Wormhole
     default: op
     children:
       wormhole.add.*:
-        description: Create / replace all types of Jump
+        description: Create / replace all types of jump
         children:
           wormhole.add.other:
-            description: Create private Jumps for other players
+            description: Create private jumps for other players
             default: op
           wormhole.add.private:
-            description: Create private Jumps
+            description: Create private jumps
             default: true
           wormhole.add.public:
-            description: Create public Jumps
+            description: Create public jumps
             default: op
       wormhole.back:
         description: Jump back to previous location
         default: true
-      wormhole.del.*:
-        description: Delete all types of Jump
+      wormhole.delete.*:
+        description: Delete all types of jump
         children:
-          wormhole.del.other:
-            description: Delete other users' Jumps
+          wormhole.delete.other:
+            description: Delete other users' jumps
             default: op
-          wormhole.del.private:
-            description: Delete private Jumps
+          wormhole.delete.private:
+            description: Delete private jumps
             default: true
-          wormhole.del.public:
-            description: Delete public Jumps
+          wormhole.delete.public:
+            description: Delete public jumps
             default: op
       wormhole.free:
         description: Exept from being charged to use Wormhole
         default: op
+      wormhole.ignore_world_blacklist:
+        description: Allows player to use Wormhole in blacklisted worlds
+        default: op
       wormhole.jump.*:
-        description: Jump directly to any type of Jump
+        description: Jump directly to any type of jump
         children:
           wormhole.jump.other:
-            description: Jump directly to another user's Jump
+            description: Jump directly to another user's jump
             default: op
           wormhole.jump.private:
-            description: Jump directly to private Jump
+            description: Jump directly to private jump
             default: true
           wormhole.jump.public:
-            description: Jump directly to public Jump
+            description: Jump directly to public jump
             default: true
       wormhole.list.*:
-        description: List all types of Jump
+        description: List all types of jump
         children:
           wormhole.list.other:
-            description: List others' Jumps
+            description: List others' jumps
             default: op
           wormhole.list.private:
-            description: List private Jumps
+            description: List private jumps
             default: true
           wormhole.list.public:
-            description: List public Jumps
+            description: List public jumps
             default: true
       wormhole.reload:
         description: Reload config
         default: op
       wormhole.rename:
-        description: Rename all types of Jump
+        description: Rename all types of jump
         children:
           wormhole.rename.other:
-            description: Rename other players' Jumps
+            description: Rename other players' jumps
             default: op
           wormhole.rename.private:
-            description: Rename private Jumps
+            description: Rename private jumps
             default: true
           wormhole.rename.public:
-            description: Rename public Jumps
+            description: Rename public jumps
             default: op
       wormhole.replace.*:
-        description: Replace all types of Jump
+        description: Replace all types of jump
         children:
           wormhole.replace.other:
-            description: Replace other players' Jumps
+            description: Replace other players' jumps
             default: op
           wormhole.replace.private:
-            description: Replace private Jumps
+            description: Replace private jumps
             default: true
           wormhole.replace.public:
-            description: Replace public Jumps
+            description: Replace public jumps
             default: op
       wormhole.set.*:
-        description: Set sign to point to all types of Jump
+        description: Set sign to point to all types of jump
         children:
           wormhole.set.other:
-            description: Set sign to point to another user's Jump
+            description: Set sign to point to another user's jump
             default: op
           wormhole.set.private:
-            description: Set sign to point to a private Jump
+            description: Set sign to point to a private jump
             default: true
           wormhole.set.public:
-            description: Set sign to point to a public Jump
+            description: Set sign to point to a public jump
             default: op
       wormhole.unset.*:
-        description: Unset sign pointing to any type of Jump
+        description: Unset sign pointing to any type of jump
         children:
           wormhole.unset.other:
-            description: Unset sign pointing to another user's Jump
+            description: Unset sign pointing to another user's jump
             default: op
           wormhole.unset.private:
-            description: Unset sign pointing to private Jump
+            description: Unset sign pointing to private jump
             default: true
           wormhole.unset.public:
-            description: Unset sign pointing to public Jump
+            description: Unset sign pointing to public jump
             default: op
       wormhole.use.*:
-        description: Use sign pointing to any type of Jump
+        description: Use sign pointing to any type of jump
         children:
           wormhole.use.other:
-            description: Use another user's Jump sign
+            description: Use another user's jump sign
             default: op
           wormhole.use.private:
-            description: Use private Jump sign
+            description: Use private jump sign
             default: true
           wormhole.use.public:
-            description: Use public Jump sign
+            description: Use public jump sign
             default: true
       wormhole.version:
         description: Display the Wormhole version

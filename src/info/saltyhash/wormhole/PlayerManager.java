@@ -1,48 +1,48 @@
 package info.saltyhash.wormhole;
 
-import java.util.List;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
+import org.bukkit.plugin.java.JavaPlugin;
 
 /** Uses player metadata to store volatile information about the player. */
-class PlayerManager {
-    private final Wormhole wormhole;
+final class PlayerManager {
+    private static JavaPlugin plugin;
     
-    PlayerManager(Wormhole wormhole) {
-        this.wormhole = wormhole;
+    private PlayerManager() {}
+    
+    static void setup(JavaPlugin plugin) {
+        PlayerManager.plugin = plugin;
     }
     
-    private Object getMetadata(Player player, String key) {
-        /* Returns the object for key in given player (null if DNE). */
-        List<MetadataValue> values = player.getMetadata(key);
-        for (MetadataValue value : values) {
-            if (value.getOwningPlugin().getDescription().getName().equals(
-                this.wormhole.getDescription().getName())) {
-                return value.value();
-            }
+    /** Returns the object for key in given player (null if DNE). */
+    private static Object getMetadata(Player player, String key) {
+        for (MetadataValue value : player.getMetadata(key)) {
+            if (value.getOwningPlugin().equals(plugin)) return value.value();
         }
         return null;
     }
     
     /** Sets the object for key in given player. */
-    private void setMetadata(Player player, String key, Object object) {
-        player.setMetadata(key, new FixedMetadataValue(this.wormhole, object));
+    private static void setMetadata(Player player, String key, Object object) {
+        player.setMetadata(key, new FixedMetadataValue(plugin, object));
     }
     
-    /** @return The Player's last Jump (null if DNE). */
-    Jump getLastJump(Player player) {
+    private static final String previousLocationKey = "previousLocation";
+    /** Returns the player's last jump record, or null if DNE. */
+    static Location getPreviousLocation(Player player) {
         try {
-            return (Jump)this.getMetadata(player, "last");
+            return (Location) getMetadata(player, previousLocationKey);
         }
         catch (ClassCastException e) {
-            this.setMetadata(player, "last", null);
+            setMetadata(player, previousLocationKey, null);
             return null;
         }
     }
-
-    /** Sets the player's last Jump. */
-    void setLastJump(Player player, Jump jump) {
-        this.setMetadata(player, "last", jump);
+    
+    /** Sets the player's last jump. */
+    static void setPreviousLocation(Player player, Location location) {
+        setMetadata(player, previousLocationKey, location);
     }
 }

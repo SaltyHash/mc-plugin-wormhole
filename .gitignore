@@ -1,4 +1,5 @@
 .idea/
+builds/Wormhole.jar
 out/
 *.class
 

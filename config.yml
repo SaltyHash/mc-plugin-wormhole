@@ -12,7 +12,12 @@ cost:
   unset:   0.0
   use:     0.0
 
+# Teleportation effects
 effects:
-  ring: false
+  ring:  false
   smoke: true
   sound: true
+
+# List of worlds where using Wormhole is not allowed
+world_blacklist:
+  -

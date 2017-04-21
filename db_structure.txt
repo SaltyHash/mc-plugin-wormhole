@@ -1,7 +1,9 @@
+- - - - - - - - - - - - - - - - -  Pre-v1.4.0  - - - - - - - - - - - - - - - - -
+
 CREATE TABLE IF NOT EXISTS jumps (
   player_name TEXT,
-  jump_name TEXT,
-  world_name TEXT,
+  jump_name   TEXT,
+  world_name  TEXT,
   x REAL, y REAL, z REAL, yaw REAL,
   PRIMARY KEY (player_name, jump_name))
 
@@ -14,3 +16,36 @@ CREATE TABLE IF NOT EXISTS signs (
   FOREIGN KEY (player_name, jump_name)
     REFERENCES jumps (player_name, jump_name)
     ON DELETE CASCADE  ON UPDATE CASCADE)
+
+
+- - - - - - - - - - - - - - - - -  Version 0   - - - - - - - - - - - - - - - - -
+
+CREATE TABLE schema_version (
+  `version` INTEGER);
+
+CREATE TABLE players (
+  `id`       INTEGER PRIMARY KEY,
+  `uuid`     BINARY(16) NOT NULL UNIQUE,
+  `username` VARCHAR(16) NOT NULL);
+
+CREATE TABLE jumps (
+  `id`         INTEGER PRIMARY KEY,
+  `player_id`  INTEGER REFERENCES players(`id`)
+               ON DELETE CASCADE ON UPDATE CASCADE,
+  `name`       VARCHAR(100) NOT NULL,
+  `world_uuid` BINARY(16) NOT NULL,
+  `x` DOUBLE PRECISION NOT NULL,
+  `y` DOUBLE PRECISION NOT NULL,
+  `z` DOUBLE PRECISION NOT NULL,
+  `yaw` FLOAT NOT NULL,
+  UNIQUE (`player_id`, `name`));
+
+CREATE TABLE signs (
+  `id` INTEGER PRIMARY KEY,
+  `world_uuid` BINARY(16) NOT NULL,
+  `x` INTEGER NOT NULL,
+  `y` INTEGER NOT NULL,
+  `z` INTEGER NOT NULL,
+  `jump_id` INTEGER NOT NULL REFERENCES jumps(`id`)
+            ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE (`world_uuid`, `x`, `y`, `z`));
